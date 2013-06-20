@@ -109,14 +109,14 @@ if __name__ == "__main__":
     ### the following will create .h5 files from the origin TIFF stack
     ### from the EPFL website (see download links above)
 
-    tiff_to_hdf5()
+    #tiff_to_hdf5()
 
     ### the following will write out the files block00.h5 to block03.h5
 
-    export_blocks() 
+    #export_blocks() 
 
     ### the following will show the .h5 dataset specified as first argument
     ### on the command line
 
-    #view(sys.argv[1])
+    view(sys.argv[1])
 
