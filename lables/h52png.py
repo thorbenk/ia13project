@@ -9,11 +9,7 @@ from matplotlib import pyplot as plot
 
 if __name__ == "__main__":
     
-<<<<<<< HEAD:lables/h52png.py
-    f = h5py.File("../block00.h5",'r')
-=======
     f = h5py.File("../data/block00.h5",'r')
->>>>>>> 468c610e6874f47fefcef356c6ea06e4c0a2a20e:lables/load.py
     
     data = f['volume']['data']
     
