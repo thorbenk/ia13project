@@ -9,7 +9,7 @@ from matplotlib import pyplot as plot
 
 if __name__ == "__main__":
     
-    f = h5py.File("block00.h5",'r')
+    f = h5py.File("../block00.h5",'r')
     
     data = f['volume']['data']
     
