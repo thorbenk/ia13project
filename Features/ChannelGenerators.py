@@ -14,6 +14,8 @@ class IntrinsicChannelGenerator:
     
     def channels(self, image):
         """
+        image: 3-dimensional image. only gray-scaled => shape = (x,y,z).
+
         If you reimplement this function, make sure that the return shape of
         numpy array is (x, y, z) + (c,) where c is the number of channels you
         are generating from the raw data.

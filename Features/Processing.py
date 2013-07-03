@@ -16,7 +16,8 @@ class Processing:
         They are all voxel-wise. This is done by ChannelGenerators.
 
         - scale input data beforhand: there are several possible ways of scaling
-        an image. The scaling will be done by Scalers.
+        an image. This however only works, if the dimension of the image will
+        not be changed. The scaling will be done by Scalers.
 
         - calculate some statistics of the channels. Do this Supervoxel-wise.
         This is done by ChannelFeatures.
@@ -124,6 +125,12 @@ class Processing:
         # generate channels
         channels = []
 
+        # NOTE: if we want to allow scaled images in terms of changed
+        # dimensions, then you have to redefine your Scalers in order to also
+        # return the new labels. Furthermore, we have to store generated
+        # channels for each scaled version. This becomes a little messy then...
+        
+        
         for cg in self.channelGenerators:
             # we need to distinguish here between intrinsic and external channel
             # generators
@@ -138,6 +145,8 @@ class Processing:
                 curChannel = cg.channels()
                 if(curChannel.shape[0:3] == image.shape[0:3]):
                     channels.append(curChannel)
+                else:
+                    raise IndexError()
         
         for scaler in self.scalers:
             scaledImage = scaler.scaled(image)
@@ -147,6 +156,9 @@ class Processing:
         # make given channels to be a numpy array
         # do this by joining the last axis. This makes sense, as the last axis
         # contains the channels that were created by each channel generator
+        #NOTE: if scaled images with different dimensions should be allowed,
+        #      than this would not be possible that easy anymore.
+
         channels = np.concatenate(channels, axis=3)
         nChannels = channels.shape[3]
         
@@ -166,9 +178,15 @@ class Processing:
         cfeatures = []
         
         # go through all supervoxels
+        # NOTE: if dimension-scaled images should be allowed here, the handling of
+        # different dimensions has to be taken into account here as well.
+
         for label in range(0,nLabels):
             voxel = channels[supervoxels[label]]
-            
+
+            # NOTE: this still does not linearizes memory, it only returns a
+            #       view.
+
             #go through all channel features
             for cf in self.channelFeatures:
                 cfeatures.append(cf.features(voxel))
