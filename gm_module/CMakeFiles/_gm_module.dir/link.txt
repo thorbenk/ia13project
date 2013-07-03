@@ -1,0 +1,1 @@
+/usr/bin/c++  -fPIC -O3 -DNDEBUG   -shared -Wl,-soname,_gm_module.so -o _gm_module.so CMakeFiles/_gm_module.dir/gm_module.cpp.o CMakeFiles/_gm_module.dir/src/pygm.cxx.o -lboost_python -lvigraimpex /usr/lib/python2.7/dist-packages/vigra/vigranumpycore.so -Wl,-rpath,/usr/lib/python2.7/dist-packages/vigra 
