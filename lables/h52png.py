@@ -9,20 +9,21 @@ from matplotlib import pyplot as plot
 
 if __name__ == "__main__":
     
+<<<<<<< HEAD:lables/h52png.py
     f = h5py.File("../block00.h5",'r')
+=======
+    f = h5py.File("../data/block00.h5",'r')
+>>>>>>> 468c610e6874f47fefcef356c6ea06e4c0a2a20e:lables/load.py
     
     data = f['volume']['data']
     
     for i in range(0,data.shape[2],10):
         vigra.impex.writeImage(data[:,:,i],"block00_"+str(i)+".png")
-        '''
+
         plot.imshow(data[:,:,i])
         plot.show()
         time.sleep(.2)
         plot.clf()
         plot.close()
-        '''
-    import pdb
-    pdb.set_trace()
 
 
