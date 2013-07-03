@@ -9,6 +9,24 @@ import ChannelFeatures
 
 class Processing:
     """
+
+    The basic idea here is:
+        - create channels from Input Image like Laplacian, Gradient
+        Magnitude, ..., loaded from harddisk.
+        They are all voxel-wise. This is done by ChannelGenerators.
+
+        - scale input data beforhand: there are several possible ways of scaling
+        an image. The scaling will be done by Scalers.
+
+        - calculate some statistics of the channels. Do this Supervoxel-wise.
+        This is done by ChannelFeatures.
+
+        - Finally calculate Supervoxel-Features like Size, volume of convex
+        hull, PCA, ... This will be done by SupervoxelFeatures. They might also
+        use Scalers beforhand. 
+
+
+
     This class is responsible for the whole feature processing step.
 
     It schedules the processing for each channel generator.
