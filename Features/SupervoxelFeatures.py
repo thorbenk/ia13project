@@ -24,7 +24,7 @@ class SupervoxelFeature:
         """calculates the features for each supervoxel"""
 
         #TODO input format needs to be defined properly
-        return NotImplementedError()
+        raise NotImplementedError()
 
 
 

@@ -10,7 +10,7 @@ class IntrinsicChannelGenerator:
         pass
 
     def numChannels(self):
-        return NotImplementedError() 
+        raise NotImplementedError() 
     
     def channels(self, image):
         """
@@ -29,10 +29,10 @@ class ExternalChannelGenerator:
         pass
 
     def numChannels(self):
-        return NotImplementedError()
+        raise NotImplementedError()
 
     def channels(self):
-        return NotImplementedError()
+        raise NotImplementedError()
 
 
 
