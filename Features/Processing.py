@@ -17,7 +17,10 @@ class Processing:
 
         - scale input data beforhand: there are several possible ways of scaling
         an image. This however only works, if the dimension of the image will
-        not be changed. The scaling will be done by Scalers.
+        not be changed. The scaling will be done by Scalers. This has the
+        advantage, that channel generator, that don't have an own scaling
+        mechanism, can share precomputed scales of the raw data. This safes
+        computation time. 
 
         - calculate some statistics of the channels. Do this Supervoxel-wise.
         This is done by ChannelFeatures.
@@ -184,7 +187,7 @@ class Processing:
         for label in range(0,nLabels):
             voxel = channels[supervoxels[label]]
 
-            # NOTE: this still does not linearizes memory, it only returns a
+            # FIXME: this still does not linearizes memory, it only returns a
             #       view.
 
             #go through all channel features
@@ -193,7 +196,7 @@ class Processing:
         
         cfeatures = np.array(cfeatures)
         
-        #TODO implement supervoxel features
+        #TODO add supervoxel features
         
         #finally check that output is nSupervoxels*nFeatures
         assert(cfeatures.shape == (nLabels, nChannels))
@@ -205,28 +208,34 @@ class Processing:
 
 if __name__ == "__main__":
 
-    
     # create test data.
     n = 100
     image = np.random.randint(0, 255, size=(n, n, n))
     image = 5*np.ones((n,n,n))
-    labels = np.zeros((n, n, n), dtype=np.uint32)
-    labels[0:50,   0:50,       0:50] = 1
-    labels[50:100, 0:50,       0:50] = 2
-    labels[0:50,   50:100,     0:50] = 3
-    labels[0:50,   50:100,   50:100] = 4
-
-    image[np.where(labels==1)] = 20
-    image[np.where(labels==2)] = 30
-    image[np.where(labels==3)] = 40
-    image[np.where(labels==4)] = 50
-
     
+    # create some supervoxels
+    labels = 1*np.zeros((n, n, n), dtype=np.uint32)
+    labels[0:50,   0:50,       0:50] = 2
+    labels[50:100, 0:50,       0:50] = 3
+    labels[0:50,   50:100,     0:50] = 4
+    labels[0:50,   50:100,   50:100] = 5
+
+    image[np.where(labels==2)] = 20
+    image[np.where(labels==3)] = 30
+    image[np.where(labels==4)] = 40
+    image[np.where(labels==5)] = 50
+
     proc = Processing()
-    proc.addScaler(Scalers.DummyScaler())
+
+    # currently we don't need scalers.
+    #proc.addScaler(Scalers.DummyScaler())
+
     proc.addChannelFeature(ChannelFeatures.MeanChannelValueFeature())
+
+    # Adds some channel generators
     proc.addChannelGenerator(ChannelGenerators.TestChannelGenerator())
-    proc.addChannelGenerator(ChannelGenerators.LaplaceChannelGenerator(), False)
+    for scale in [1.0, 5.0, 10.0]:
+        proc.addChannelGenerator(ChannelGenerators.LaplaceChannelGenerator(scale))
 
     print proc.process(image, labels)
 
