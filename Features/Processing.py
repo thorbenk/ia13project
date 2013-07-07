@@ -4,7 +4,7 @@ import numpy
 import Scalers
 import ChannelGenerators
 import ChannelFeatures
-
+import SupervoxelFeatures
 
 
 class Processing:
@@ -101,7 +101,7 @@ class Processing:
         """
         feature: the supervoxel feature you want to add
         """
-        pass
+        self.supervoxelFeatures.append(feature)
 
     
     def process(self, image, labels):
@@ -179,13 +179,20 @@ class Processing:
         ##  In turn calculate the channel features.
         
         cfeatures = []
-        
+        sfeatures = []
+
         # go through all supervoxels
         # NOTE: if dimension-scaled images should be allowed here, the handling of
         # different dimensions has to be taken into account here as well.
 
         for label in range(0,nLabels):
             voxel = channels[supervoxels[label]]
+
+            # get the list of points belonging to the given supervoxel
+            coordinates = np.transpose(supervoxels[label])
+            
+            for sfeature in self.supervoxelFeatures:
+                sfeatures.append(sfeature.features(coordinates))
 
             # FIXME: this still does not linearizes memory, it only returns a
             #       view.
@@ -195,13 +202,21 @@ class Processing:
                 cfeatures.append(cf.features(voxel))
         
         cfeatures = np.array(cfeatures)
+        sfeatures = np.array(sfeatures)
         
-        #TODO add supervoxel features
+        # concat all values into one big thing
+        concats = []
+        if(len(cfeatures) > 0):
+            assert(len(cfeatures.shape) == 2)
+            concats.append(cfeatures)
+        if(len(sfeatures) > 0):
+            assert(len(sfeatures.shape) == 2)
+            concats.append(sfeatures)
         
-        #finally check that output is nSupervoxels*nFeatures
-        assert(cfeatures.shape == (nLabels, nChannels))
-        
-        return np.array(cfeatures)
+        allFeatures = np.concatenate(concats, axis=1)
+        print allFeatures.shape
+
+        return allFeatures
 
 
         
@@ -211,19 +226,21 @@ if __name__ == "__main__":
     # create test data.
     n = 100
     image = np.random.randint(0, 255, size=(n, n, n))
-    image = 5*np.ones((n,n,n))
+    image = 10*np.ones((n,n,n))
     
     # create some supervoxels
-    labels = 1*np.zeros((n, n, n), dtype=np.uint32)
+    labels = np.ones((n, n, n), dtype=np.uint32)
     labels[0:50,   0:50,       0:50] = 2
     labels[50:100, 0:50,       0:50] = 3
     labels[0:50,   50:100,     0:50] = 4
     labels[0:50,   50:100,   50:100] = 5
+    labels[50:100,   50:100,   50:100] = 6
 
     image[np.where(labels==2)] = 20
     image[np.where(labels==3)] = 30
     image[np.where(labels==4)] = 40
     image[np.where(labels==5)] = 50
+    image[np.where(labels==5)] = 60
 
     proc = Processing()
 
@@ -237,6 +254,9 @@ if __name__ == "__main__":
     for scale in [1.0, 5.0, 10.0]:
         proc.addChannelGenerator(ChannelGenerators.LaplaceChannelGenerator(scale))
 
-    print proc.process(image, labels)
+    #proc.addSupervoxelFeature(SupervoxelFeatures.SizeFeature())
+    ret = proc.process(image, labels)
+    print "###################"
+    print ret
 
 
