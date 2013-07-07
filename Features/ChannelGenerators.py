@@ -48,10 +48,6 @@ class ExternalChannelGenerator:
         raise NotImplementedError()
 
 
-
-# Concrete Implementations
-# We maybe want to split this up
-
 ##
 ### External Channel Generators
 ##
@@ -104,6 +100,8 @@ class TestChannelGenerator(IntrinsicChannelGenerator):
 
     def numChannels(self):
         return self.numChans
+        
+
 
 ################################################################################
 # TODO: Gradient Amplitudes, Eigenvalues of Hessian of Gaussian, ...?
@@ -130,44 +128,106 @@ class LaplaceChannelGenerator(IntrinsicChannelGenerator):
     def __init__(self, scale = 1.0):
         self.scale = scale
 
-    def channels(self, image):
-
-        #TODO implement me
-        # Karsten: this does not work for me here. I don't know how to invoke
-        # this function correctly. However, the idea should be clear.
-
-        # laplace = vigra.filters.laplacianOfGaussian(image, scale=self.scale)
-        # return np.reshape(laplace, image.shape+(1,))
-
-
-        # look at the abstract class definition for the shape to return
-        return np.reshape(image, image.shape+(1,))
+    def channels(self, image, step = 1.0):
+        laplace = vigra.filters.laplacianOfGaussian(image,self.scale,None,0.0,step)
+        return np.reshape(laplace, image.shape+(1,))
 
     def numChannels(self):
         return 1
 
 
+class GaussianGradientMagnitudeChannelGenerator(IntrinsicChannelGenerator):
+
+    """
+    Computes Gaussian gradient magnitudes for a volume 'image'
+    """
+    def channels(self, image, sigma = 1.0, step = 1.0):
+        magnitudes = vigra.filters.gaussianGradientMagnitude(image,sigma,True,None,0.0,step)
+        print magnitudes.shape       
+        return magnitudes.reshape(image.shape+(1,))
+
+    def numChannels(self):
+        return 1
+
+
+class EVofGaussianHessianChannelGenerator(IntrinsicChannelGenerator):
+
+    def __init__(self, scale = 1.0):
+        self.scale = scale
+    
+    """
+    Computes Eigen values of the Hessian of Gaussian matrix for a volume 'image'
+    """
+    def channels(self, image, step = 1.0):
+        hessianEVs = vigra.filters.hessianOfGaussianEigenvalues(image,self.scale,None,0.0,step)
+        return hessianEVs
+
+    def numChannels(self):
+        return 3
+
+
+class EVofStructureTensorChannelGenerator(IntrinsicChannelGenerator):
+    
+    def __init__(self, innerScale = 1.0, outerScale = 1.0):
+        self.innerScale = innerScale
+        self.outerScale = outerScale
+
+    """
+    Computes Eigen values of the structure tensor for a volume 'image'
+    """
+    def channels(self, image, step):
+        structureEVs = vigra.filters.structureTensorEigenvalues(image, self.innerScale, self.outerScale,None,0.0,step) 
+        return structureEVs
+
+    def numChannels(self):
+        return 3
+
+
 # test the channels generators here
 if __name__ == "__main__":
-
+    
     #Test data (n, n, n), random sampled data
-    test = np.random.random((10,10,10))
-
-    print "Test data", test.shape, type(test)
+    n = 20
+    scale = 1.0 # n=5 -> sc<1.1;  n=20 -> sc<6.1  ??? (kernel longer than line) 
+    sigma = 1.0
+    stepsize = 2.0
+    test = np.float32(np.random.random((n,n,n)))
+    
+    print "Test data", test.shape, type(test), type(test[0,0,0])
+    print "Sigma for Gaussian:", sigma
+    print "Scale for Laplace:", scale
+    print "Step to adjacent pixels:", stepsize
     #One might also wants to add meaningful test data to test the gradient etc...
-
-
-    laplace = LaplaceChannelGenerator(5.0)
-    laplaceChannels = laplace.channels(test)
-    # check that output has right shape
-    assert( laplace.numChannels() == 1)
-    assert( laplaceChannels.shape == (test.shape + (laplace.numChannels(),) ))
-
-
+    
     testGenerator = TestChannelGenerator(4)
     testChannels = testGenerator.channels(test)
+    # check that output has right shape
     assert( testGenerator.numChannels() == 4)
     assert( testChannels.shape == (test.shape + (testGenerator.numChannels(),) ))
     
+    laplace = LaplaceChannelGenerator(scale)
+    laplaceChannels = laplace.channels(test, stepsize)
+    assert( laplace.numChannels() == 1)
+    assert( laplaceChannels.shape == (test.shape + (laplace.numChannels(),) ))
+    
+    gauss = GaussianGradientMagnitudeChannelGenerator()
+    gaussChannels = gauss.channels(test, sigma, stepsize)
+    assert( gauss.numChannels() == 1)
+    assert( gaussChannels.shape == (test.shape + (gauss.numChannels(),) ))
+    
+    hessian = EVofGaussianHessianChannelGenerator()
+    hessianChannels = hessian.channels(test, stepsize)
+    print hessian.numChannels()
+    assert( hessian.numChannels() == 3)
+    assert( hessianChannels.shape == (test.shape + (hessian.numChannels(),) ))
+    
+    struct = EVofStructureTensorChannelGenerator()
+    structChannels = struct.channels(test, stepsize)
+    assert( struct.numChannels() == 3)
+    assert( structChannels.shape == (test.shape + (struct.numChannels(),) ))
+
+    
+    
+    print "All tests passed"
 
 
