@@ -89,7 +89,7 @@ class PCA(SupervoxelFeature):
         else:
             return np.array(s[0:noAxes])
 
-## TODO: PCA, Convex Hull Volume, Shape Probability, ...
+## TODO: Convex Hull Volume, Shape Probability, ...
 
 #test the channel generators here
 if __name__ == "__main__":
