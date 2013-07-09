@@ -1,0 +1,10 @@
+bin
+CMakeFiles
+obj
+*.so
+*.pyc
+gm_CB*
+Makefile
+CMakeCache.txt
+cmake_install.cmake
+
