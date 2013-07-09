@@ -3,7 +3,8 @@ CMakeFiles
 obj
 *.so
 *.pyc
-gm_CB*
+gm_CB.cbp
+gm_CB.layout
 Makefile
 CMakeCache.txt
 cmake_install.cmake
