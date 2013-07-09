@@ -2,10 +2,15 @@ import numpy as np
 
 class ChannelFeature:
     """
-    A ChannelFeature calculates from a (n,c)-shaped array interesting statistics
-    for each channel c and returns a vector of shape (a*c,), where n is the number
-    of voxels provided and a is the number of features that are calculated for
-    each channel.
+    Channel Generators create characteristics from the raw data. The aim of
+    ChannelFeatures is to collect statistics for each supervoxel and channel.
+    
+    A ChannelFeature calculates from an (n,c)-shaped array statistics
+    for each channel c and returns a vector of shape (numFeatures()*c,), where c is the number
+    of channels provided and numFeatures() is the number of features that are calculated for
+    each channel. N is the number of voxels that all belong to the same
+    supervoxel.
+
     """
 
     def __init__(self):
@@ -16,15 +21,17 @@ class ChannelFeature:
 
     def numFeatures(self, channels):
         """
-        for the given number of channels, 
-        returns the number of features this class will
-        compute
+        for the given number of channels, return here
+        the total number of features that will be calculated.
         """
         raise NotImplementedError()
 
     def feature(self, voxels):
         """
-        computes the features for the given voxels
+        computes the features for the given voxels.
+        voxels: (n,c)-shaped array.
+
+        returns: (numFeatures()*c,) shaped array
         """
         raise NotImplementedError()
 
@@ -41,6 +48,11 @@ class MeanChannelValueFeature(ChannelFeature):
         return channels
 
 
+###############################
+# TODO:
+# Beside implementing the ChannelHistogramFeature 
+# also add median, stddev and variance.
+
 class ChannelHistogramFeature(ChannelFeature):
     """
     Computes for each channel a normalized histogram with given number of bins
@@ -53,24 +65,26 @@ class ChannelHistogramFeature(ChannelFeature):
         return  self.bins*channels
 
     def features(self, voxels):
-        return np.array(np.ones(3*10))
+
+        raise NotImplementedError()
 
 
+# test the features
 if __name__ == "__main__":
 
-    #Test data
+    #Test data (n, c), 2 voxels and 3 channels per voxel
     test = np.array([[1, 2, 3], [1, 2, 3]])
     
-    
-    #Test MeanChannelValueFeature
     mean = MeanChannelValueFeature()
     meanTest = mean.features(test)
-    assert(meanTest.shape == (3,))
+    assert(hist.numFeatures(3) == 3)
+    assert(meanTest.shape == (hist.numFeatures(1),))
 
-    #Test ChannelHistogramFeature
-    hist = ChannelHistogramFeature(10)
-    histTest = hist.features(test)
-    assert(histTest.shape == (3*10,))
+#    #Test ChannelHistogramFeature
+#    hist = ChannelHistogramFeature(10)
+#    histTest = hist.features(test)
+#    assert(hist.numFeatures(3) == 3*10)
+#    assert(histTest.shape == (hist.numFeatures(3),))
     
 
 

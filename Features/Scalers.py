@@ -1,7 +1,15 @@
-
-
+# Scalers take raw data in scale them respectively. This way we can retrieve
+# information on different level of details
+#
+# We want to use dedicated scalers in order to speed things up. So we only need to
+# scale the image once and all channel generators can share one scaled version.
 
 class AbstractScaler:
+    """ 
+    scales a given image.
+    make sure that the size of the input is not changed
+    """
+
     def __init__(self):
         pass
 
@@ -17,6 +25,11 @@ class DummyScaler(AbstractScaler):
         print "DummyScaler: ", image.shape
         return image
 
+    def __str__(self):
+        return "DummyScaler"
+
+
+# TODO: implement gaussian smoother.
 class GaussianScaler(AbstractScaler):
     """
     Scales the image by smoothing with a gaussian that uses the given sigma as
@@ -29,15 +42,5 @@ class GaussianScaler(AbstractScaler):
     def scaled(self, image):
         return AbstractScaler.scaled(self, image)
 
-
-def SubsamplingScaler(AbstractScaler):
-    """
-    Scales the image by subsampling it by the given steps
-    Note: returned image is smaller than given.
-    """
-    def __init__(self, step = 2):
-        self.step = step
-
-    def scaled(self, image):
-        return AbstractScaler.scaled(self, image)
-        
+    def __str__(self):
+        return "GScaler["+str(self.sigma)+"]"

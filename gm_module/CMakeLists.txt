@@ -4,7 +4,7 @@
 IF(DEFINED CMAKE_BUILD_TYPE)
    SET(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel.")
 ELSE()
-   SET(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel.")
+   SET(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel.")
 ENDIF()
 
 #--------------------------------------------------------------
@@ -20,7 +20,7 @@ project(gm_module)
 #--------------------------------------------------------------
 file(GLOB_RECURSE headers include/*.hxx)
 include_directories(include)
-
+add_definitions(-DVIGRA_CHECK_BOUNDS=1)  ######################
 #--------------------------------------------------------------
 # vigra
 #--------------------------------------------------------------

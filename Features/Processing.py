@@ -4,7 +4,7 @@ import numpy
 import Scalers
 import ChannelGenerators
 import ChannelFeatures
-
+import SupervoxelFeatures
 
 
 class Processing:
@@ -16,7 +16,11 @@ class Processing:
         They are all voxel-wise. This is done by ChannelGenerators.
 
         - scale input data beforhand: there are several possible ways of scaling
-        an image. The scaling will be done by Scalers.
+        an image. This however only works, if the dimension of the image will
+        not be changed. The scaling will be done by Scalers. This has the
+        advantage, that channel generator, that don't have an own scaling
+        mechanism, can share precomputed scales of the raw data. This safes
+        computation time. 
 
         - calculate some statistics of the channels. Do this Supervoxel-wise.
         This is done by ChannelFeatures.
@@ -97,7 +101,7 @@ class Processing:
         """
         feature: the supervoxel feature you want to add
         """
-        pass
+        self.supervoxelFeatures.append(feature)
 
     
     def process(self, image, labels):
@@ -124,6 +128,12 @@ class Processing:
         # generate channels
         channels = []
 
+        # NOTE: if we want to allow scaled images in terms of changed
+        # dimensions, then you have to redefine your Scalers in order to also
+        # return the new labels. Furthermore, we have to store generated
+        # channels for each scaled version. This becomes a little messy then...
+        
+        
         for cg in self.channelGenerators:
             # we need to distinguish here between intrinsic and external channel
             # generators
@@ -138,6 +148,8 @@ class Processing:
                 curChannel = cg.channels()
                 if(curChannel.shape[0:3] == image.shape[0:3]):
                     channels.append(curChannel)
+                else:
+                    raise IndexError()
         
         for scaler in self.scalers:
             scaledImage = scaler.scaled(image)
@@ -147,6 +159,9 @@ class Processing:
         # make given channels to be a numpy array
         # do this by joining the last axis. This makes sense, as the last axis
         # contains the channels that were created by each channel generator
+        #NOTE: if scaled images with different dimensions should be allowed,
+        #      than this would not be possible that easy anymore.
+
         channels = np.concatenate(channels, axis=3)
         nChannels = channels.shape[3]
         
@@ -164,52 +179,84 @@ class Processing:
         ##  In turn calculate the channel features.
         
         cfeatures = []
-        
+        sfeatures = []
+
         # go through all supervoxels
+        # NOTE: if dimension-scaled images should be allowed here, the handling of
+        # different dimensions has to be taken into account here as well.
+
         for label in range(0,nLabels):
             voxel = channels[supervoxels[label]]
+
+            # get the list of points belonging to the given supervoxel
+            coordinates = np.transpose(supervoxels[label])
             
+            for sfeature in self.supervoxelFeatures:
+                sfeatures.append(sfeature.features(coordinates))
+
+            # FIXME: this still does not linearizes memory, it only returns a
+            #       view.
+
             #go through all channel features
             for cf in self.channelFeatures:
                 cfeatures.append(cf.features(voxel))
         
         cfeatures = np.array(cfeatures)
+        sfeatures = np.array(sfeatures)
         
-        #TODO implement supervoxel features
+        # concat all values into one big thing
+        concats = []
+        if(len(cfeatures) > 0):
+            assert(len(cfeatures.shape) == 2)
+            concats.append(cfeatures)
+        if(len(sfeatures) > 0):
+            assert(len(sfeatures.shape) == 2)
+            concats.append(sfeatures)
         
-        #finally check that output is nSupervoxels*nFeatures
-        assert(cfeatures.shape == (nLabels, nChannels))
-        
-        return np.array(cfeatures)
+        allFeatures = np.concatenate(concats, axis=1)
+        print allFeatures.shape
+
+        return allFeatures
 
 
         
 
 if __name__ == "__main__":
 
-    
     # create test data.
     n = 100
     image = np.random.randint(0, 255, size=(n, n, n))
-    image = 5*np.ones((n,n,n))
-    labels = np.zeros((n, n, n), dtype=np.uint32)
-    labels[0:50,   0:50,       0:50] = 1
-    labels[50:100, 0:50,       0:50] = 2
-    labels[0:50,   50:100,     0:50] = 3
-    labels[0:50,   50:100,   50:100] = 4
-
-    image[np.where(labels==1)] = 20
-    image[np.where(labels==2)] = 30
-    image[np.where(labels==3)] = 40
-    image[np.where(labels==4)] = 50
-
+    image = 10*np.ones((n,n,n))
     
-    proc = Processing()
-    proc.addScaler(Scalers.DummyScaler())
-    proc.addChannelFeature(ChannelFeatures.MeanChannelValueFeature())
-    proc.addChannelGenerator(ChannelGenerators.TestChannelGenerator())
-    proc.addChannelGenerator(ChannelGenerators.LaplaceChannelGenerator(), False)
+    # create some supervoxels
+    labels = np.ones((n, n, n), dtype=np.uint32)
+    labels[0:50,   0:50,       0:50] = 2
+    labels[50:100, 0:50,       0:50] = 3
+    labels[0:50,   50:100,     0:50] = 4
+    labels[0:50,   50:100,   50:100] = 5
+    labels[50:100,   50:100,   50:100] = 6
 
-    print proc.process(image, labels)
+    image[np.where(labels==2)] = 20
+    image[np.where(labels==3)] = 30
+    image[np.where(labels==4)] = 40
+    image[np.where(labels==5)] = 50
+    image[np.where(labels==5)] = 60
+
+    proc = Processing()
+
+    # currently we don't need scalers.
+    #proc.addScaler(Scalers.DummyScaler())
+
+    proc.addChannelFeature(ChannelFeatures.MeanChannelValueFeature())
+
+    # Adds some channel generators
+    proc.addChannelGenerator(ChannelGenerators.TestChannelGenerator())
+    for scale in [1.0, 5.0, 10.0]:
+        proc.addChannelGenerator(ChannelGenerators.LaplaceChannelGenerator(scale))
+
+    #proc.addSupervoxelFeature(SupervoxelFeatures.SizeFeature())
+    ret = proc.process(image, labels)
+    print "###################"
+    print ret
 
 
