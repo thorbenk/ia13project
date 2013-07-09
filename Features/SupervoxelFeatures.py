@@ -72,7 +72,7 @@ class PCA(SupervoxelFeature):
         else:
             self.axes = noAxes
         
-        self.calcEigVectors = calcEigVectors
+        self.calcEigVectors = PC
 
     
     def numFeatures(self):
