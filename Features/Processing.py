@@ -11,18 +11,22 @@ class Processing:
     """
 
     The basic idea here is:
-        - create channels from Input Image like Laplacian, Gradient
+        - Create channels from Input Image like Laplacian, Gradient
         Magnitude, ..., loaded from harddisk.
         They are all voxel-wise. This is done by ChannelGenerators.
 
-        - scale input data beforhand: there are several possible ways of scaling
+        - Scale input data beforhand: there are several possible ways of scaling
         an image. This however only works, if the dimension of the image will
         not be changed. The scaling will be done by Scalers. This has the
         advantage, that channel generator, that don't have an own scaling
         mechanism, can share precomputed scales of the raw data. This safes
         computation time. 
 
-        - calculate some statistics of the channels. Do this Supervoxel-wise.
+        However, the scaling can also be handy for convolution filters, as you
+        can minimize the filter kernel and so the computation time will be
+        smaller as well.
+
+        - Calculate some statistics of the channels. Do this Supervoxel-wise.
         This is done by ChannelFeatures.
 
         - Finally calculate Supervoxel-Features like Size, volume of convex
@@ -37,21 +41,23 @@ class Processing:
     If the channel generator is an instrinsic channel generator, than it also
     receives scaled input, if desired.
 
-    Afterwards it linearizes memory in terms of supervoxels.
+    Afterwards it linearizes the memory for each supervoxel, so that channel
+    features might work faster.
 
-    It then calls the statistic modules/channel features and concatenates all
+    It then calls the channel features (statistic on channels) and concatenates all
     channel features for each supervoxel into one vector.
 
-    [Todo] Lastly, the supervoxel features will be calculated.
+    Lastly, the supervoxel features will be calculated.
 
-    [Todo] All features for each supervoxel then will be merged
+    All features for each supervoxel then will be merged.
 
     """
 
-    
+    # instances for Scalers, ChannelGenerators, ChannelFeatures and 
+    # SuperpixelFeatures...
     scalers = []
 
-    scalingChannelGenerators = []
+    scalingChannelGenerators = []    
     channelGenerators = []
 
     channelFeatures = []
@@ -111,6 +117,8 @@ class Processing:
         this does the processing magic.
         image: 3d-image of cells
         labels: labels for each supervoxel after seperation
+
+        Note: image.shape == labels.shape
         """
 
         #make sure that we have an image with exactly 3 dimensions,
@@ -133,7 +141,8 @@ class Processing:
         # NOTE: if we want to allow scaled images in terms of changed
         # dimensions, then you have to redefine your Scalers in order to also
         # return the new labels. Furthermore, we have to store generated
-        # channels for each scaled version. This becomes a little messy then...
+        # channels for each scaled version. This becomes a little messy then. So
+        # for now we only allow scalers that don't change dimension.
         
         
         for cg in self.channelGenerators:
@@ -146,7 +155,8 @@ class Processing:
             else:
                 # this is an external channel generator
                 # first check if given channels match the shape of given
-                # intrinsic data
+                # intrinsic data. This is needed to be able to match against the
+                # labels.
                 curChannel = cg.channels()
                 if(curChannel.shape[0:3] == image.shape[0:3]):
                     channels.append(curChannel)
@@ -174,18 +184,23 @@ class Processing:
             supervoxels.append(indices)
         
         
-        ### linearize the channels per supervoxel
-        ##  We need to to this for memory optimization
-        ##  Possibly this also needs some harddisk caching as not all data might
-        ##  fit into memory.
-        ##  In turn calculate the channel features.
+        ### linearize channel data per supervoxel and calculate features
+        #  By linearizing the data according to supervoxels we can speed up
+        #  things heavily as we don't need to jump around in memory all the
+        #  time.
+        #
+          
         
         cfeatures = []
         sfeatures = []
 
         # go through all supervoxels
         # NOTE: if dimension-scaled images should be allowed here, the handling of
-        # different dimensions has to be taken into account here as well.
+        #       different dimensions has to be taken into account as well.
+
+        # FIXME: concurrent computation over supervoxels.
+        #        we can handle this in python 3.2 quite easily by the help of
+        #        concurrent-frame work.
 
         for label in range(0,nLabels):
             # FIXME: this still does not linearize in memory
@@ -211,7 +226,7 @@ class Processing:
             localCFeatures = np.concatenate(localCFeatures)
             cfeatures.append(localCFeatures)
 
-        # make the list to actual numpy arrays
+        # make the list to be numpy arrays
         cfeatures = np.array(cfeatures)
         sfeatures = np.array(sfeatures)
         
@@ -261,10 +276,10 @@ if __name__ == "__main__":
 
     # Adds some channel generators
     proc.addChannelGenerator(ChannelGenerators.TestChannelGenerator())
-    #for scale in [1.0, 5.0, 10.0]:
-    #    proc.addChannelGenerator(ChannelGenerators.LaplaceChannelGenerator(scale))
-    #    proc.addChannelGenerator(ChannelGenerators.GaussianGradientMagnitudeChannelGenerator())
-    #    proc.addChannelGenerator(ChannelGenerators.EVofGaussianHessianChannelGenerator())
+    for scale in [1.0, 5.0, 10.0]:
+        proc.addChannelGenerator(ChannelGenerators.LaplaceChannelGenerator(scale))
+        proc.addChannelGenerator(ChannelGenerators.GaussianGradientMagnitudeChannelGenerator(scale))
+        proc.addChannelGenerator(ChannelGenerators.EVofGaussianHessianChannelGenerator(scale))
 
     proc.addSupervoxelFeature(SupervoxelFeatures.SizeFeature())
     proc.addSupervoxelFeature(SupervoxelFeatures.PCA())
