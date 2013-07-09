@@ -41,6 +41,10 @@ class SupervoxelFeature:
 
 
 class SizeFeature(SupervoxelFeature):
+    """
+    Number of Voxel per Supervoxel.
+    Note that this is equivalent to the discrete volume
+    """
     
     def numFeatures(self):
         return 1
@@ -49,11 +53,19 @@ class SizeFeature(SupervoxelFeature):
         return np.array([len(supervoxel)])
 
 
-# TODO: find principal component directions, too
 class PCA(SupervoxelFeature):
+    """
+    Calculates PCAs on the given point cloud and returns either the singular
+    values or even the PC vectors.
+    """
 
-    def __init__(self, noAxes=3, calcEigVectors=False):
-    
+    def __init__(self, noAxes=3, PC=False):
+        """
+        parameters:
+            noAxes: the number of the principal components you want to calculate
+            PC: also return the PC vectors 
+        """
+
         if noAxes > 3:
             print 'WARNING: max number of principal axes can be 3. Will set axes = 3'
             self.axes = 3
