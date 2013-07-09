@@ -1,7 +1,7 @@
 import numpy
 import numpy as np
 import scipy
-
+import h5py
 import vigra
 from vigra.filters import *
 
@@ -60,19 +60,32 @@ class H5ReaderGenerator(ExternalChannelGenerator):
     This can be used, for instance, to load ilastik-classified labels for the
     type of organ.
     """
-    def __init__(self, path):
+    def __init__(self, path, data='/'):
         """
         path: the path to the HDF-file
+        data: the internal HDF path to the dataset
         """
 
-        #TODO implement reading of HDF-file
         self.path = path
-        self.h5file = None
-        self.numchannels = 1
+        self.data = data
+        
+        # read in data
+        f = h5py.File(path, 'r')
+        self.data = f[data].value
+
+        # if the data is only 3-dimensional, we need to artificially add a
+        # fourth dimension, to comply to the definition of
+        # ExternalChannelGenerator
+
+        if(len(self.data.shape)):
+            self.data = np.reshape(self.data, self.data.shape+(1,))
+        
+        # the number of the fourth dimension tells us about the number of
+        # provided channels
+        self.numchannels = self.data.shape[3]
 
     def channels(self):
-        #TODO implement this function
-        raise NotImplementedError()
+        return self.data
 
     def numChannels(self):
         return self.numchannels
@@ -244,6 +257,18 @@ if __name__ == "__main__":
     assert( structChannels.shape == (test.shape + (struct.numChannels(),) ))
 
     
+
+    ## H5ReaderGenerator
+    # 
+    # NOTE: test worked, it is deactivated however, as the file is not present
+    #       in default repository
+
+    #h5Reader = H5ReaderGenerator("../data/block00.h5", "volume/data")
+    #h5ReaderChannels = h5Reader.channels()
+    #assert(len(h5ReaderChannels.shape) == 4)
+    #assert(h5Reader.numChannels() == h5ReaderChannels.shape[3])
+
+
     
     print "All tests passed"
 
