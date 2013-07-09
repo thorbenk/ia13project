@@ -85,11 +85,8 @@ class PCA(SupervoxelFeature):
         u, s, v = svd(supervoxel, full_matrices=False, compute_uv=True)
 
         if self.calcEigVectors:
-            print np.array(np.concatenate((s[0:self.axes], u[:,0], u[:,1],
-                                           u[:,2]))).shape
             return np.array(np.concatenate((s[0:self.axes], u[:,0], u[:,1], u[:,2])))
         else:
-            print np.array(s[0:self.axes]).shape
             return np.array(s[0:self.axes])
 
 ## TODO: Convex Hull Volume, Shape Probability, ...

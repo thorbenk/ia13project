@@ -119,7 +119,7 @@ class Processing:
         assert(image.shape == labels.shape)
         #assert(labels.type is np.uint32)
         
-        bc = np.bincount(labels.flatten())
+        #bc = np.bincount(labels.flatten())
         nLabels = labels.max()
         
         
@@ -188,21 +188,30 @@ class Processing:
         # different dimensions has to be taken into account here as well.
 
         for label in range(0,nLabels):
+            # FIXME: this still does not linearize in memory
             voxel = channels[supervoxels[label]]
 
             # get the list of points belonging to the given supervoxel
             coordinates = np.transpose(supervoxels[label])
             
+            localSFeatures = []
             for sfeature in self.supervoxelFeatures:
-                sfeatures.append(sfeature.features(coordinates))
+                localSFeatures.append(sfeature.features(coordinates))
 
-            # FIXME: this still does not linearizes memory, it only returns a
-            #       view.
+            # merge all different features per supervoxel into one list
+            localSFeatures = np.concatenate(localSFeatures)
+            sfeatures.append(localSFeatures)
 
             #go through all channel features
+            localCFeatures = []
             for cf in self.channelFeatures:
-                cfeatures.append(cf.features(voxel))
-        
+                localCFeatures.append(cf.features(voxel))
+
+            #merge all different features per supervoxel into one list
+            localCFeatures = np.concatenate(localCFeatures)
+            cfeatures.append(localCFeatures)
+
+        # make the list to actual numpy arrays
         cfeatures = np.array(cfeatures)
         sfeatures = np.array(sfeatures)
         
@@ -212,12 +221,10 @@ class Processing:
             assert(len(cfeatures.shape) == 2)
             concats.append(cfeatures)
         if(len(sfeatures) > 0):
-            print "main:", sfeatures.shape
             assert(len(sfeatures.shape) == 2)
             concats.append(sfeatures)
         
         allFeatures = np.concatenate(concats, axis=1)
-        print allFeatures.shape
 
         return allFeatures
 
@@ -254,10 +261,10 @@ if __name__ == "__main__":
 
     # Adds some channel generators
     proc.addChannelGenerator(ChannelGenerators.TestChannelGenerator())
-    for scale in [1.0, 5.0, 10.0]:
-        proc.addChannelGenerator(ChannelGenerators.LaplaceChannelGenerator(scale))
-        proc.addChannelGenerator(ChannelGenerators.GaussianGradientMagnitudeChannelGenerator())
-        proc.addChannelGenerator(ChannelGenerators.EVofGaussianHessianChannelGenerator())
+    #for scale in [1.0, 5.0, 10.0]:
+    #    proc.addChannelGenerator(ChannelGenerators.LaplaceChannelGenerator(scale))
+    #    proc.addChannelGenerator(ChannelGenerators.GaussianGradientMagnitudeChannelGenerator())
+    #    proc.addChannelGenerator(ChannelGenerators.EVofGaussianHessianChannelGenerator())
 
     proc.addSupervoxelFeature(SupervoxelFeatures.SizeFeature())
     proc.addSupervoxelFeature(SupervoxelFeatures.PCA())
