@@ -82,12 +82,15 @@ class PCA(SupervoxelFeature):
         # write coordiates into columns of a matrix
         supervoxel = supervoxel.swapaxes(0, 1)
         # calculate singular value decomposition of supervoxel
-        u, s, v = svd(supervoxel, full_matrices=True, compute_uv=True)
+        u, s, v = svd(supervoxel, full_matrices=False, compute_uv=True)
 
         if self.calcEigVectors:
-            return np.array(np.concatenate((s[0:noAxes], u[:,0], u[:,1], u[:,2])))
+            print np.array(np.concatenate((s[0:self.axes], u[:,0], u[:,1],
+                                           u[:,2]))).shape
+            return np.array(np.concatenate((s[0:self.axes], u[:,0], u[:,1], u[:,2])))
         else:
-            return np.array(s[0:noAxes])
+            print np.array(s[0:self.axes]).shape
+            return np.array(s[0:self.axes])
 
 ## TODO: Convex Hull Volume, Shape Probability, ...
 
@@ -99,7 +102,7 @@ if __name__ == "__main__":
     # calculate principal components or not
     calcEigVectors = True
     # number of principal component axes to be computed
-    noAxes = 1
+    noAxes = 3
 
     ### test size
     print '>>> size test'

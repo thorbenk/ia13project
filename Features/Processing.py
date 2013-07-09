@@ -59,6 +59,8 @@ class Processing:
 
 
     def __init__(self):
+     
+        
         pass
 
     def addScaler(self, scaler):
@@ -210,6 +212,7 @@ class Processing:
             assert(len(cfeatures.shape) == 2)
             concats.append(cfeatures)
         if(len(sfeatures) > 0):
+            print "main:", sfeatures.shape
             assert(len(sfeatures.shape) == 2)
             concats.append(sfeatures)
         
@@ -225,8 +228,8 @@ if __name__ == "__main__":
 
     # create test data.
     n = 100
-    image = np.random.randint(0, 255, size=(n, n, n))
-    image = 10*np.ones((n,n,n))
+    image = np.float32(np.random.randint(0, 255, size=(n, n, n)))
+    image = np.float32(10*np.ones((n,n,n)))
     
     # create some supervoxels
     labels = np.ones((n, n, n), dtype=np.uint32)
@@ -253,8 +256,11 @@ if __name__ == "__main__":
     proc.addChannelGenerator(ChannelGenerators.TestChannelGenerator())
     for scale in [1.0, 5.0, 10.0]:
         proc.addChannelGenerator(ChannelGenerators.LaplaceChannelGenerator(scale))
+        proc.addChannelGenerator(ChannelGenerators.GaussianGradientMagnitudeChannelGenerator())
+        proc.addChannelGenerator(ChannelGenerators.EVofGaussianHessianChannelGenerator())
 
-    #proc.addSupervoxelFeature(SupervoxelFeatures.SizeFeature())
+    proc.addSupervoxelFeature(SupervoxelFeatures.SizeFeature())
+    proc.addSupervoxelFeature(SupervoxelFeatures.PCA())
     ret = proc.process(image, labels)
     print "###################"
     print ret
