@@ -1,3 +1,7 @@
+import gc
+
+import time
+
 import numpy as np
 import numpy
 
@@ -112,6 +116,48 @@ class Processing:
         self.supervoxelFeatures.append(feature)
 
     
+
+    def _getSupervoxels(self, labels):
+        """
+        retreives the the indices for each supervoxel that is found in labels.
+        """
+
+        #Beforehand np.where() has been used. But due to the fact, that you have
+        #to iterate nLabels time over the labels array, this becomes quite slow.
+        #
+        #For a 256x256x60 labels object
+        # the where()-approach took round about a minute for 2000 supervoxels,
+        # whereas this approach now takes only a few seconds.
+        # Note that slow dictionaries and stuff is used and still exceeds the
+        # where()-function by nearly two orders...
+
+        it = np.nditer(labels, flags=['multi_index'])
+
+        # this stores the coordinates for each label.
+        # l = {0:[(0,0,0), ...],...}
+        l = {}
+
+
+        #iterate over the whole labels array and find indices for each label
+        while not it.finished:
+            index = it.multi_index
+            val= int(it[0])
+            
+            if val not in l:
+                l[val] = []
+            l[val].append(it.multi_index)
+            
+            it.iternext()
+
+        # iterate over all found labels and create a slicing-compatible array
+        for key in l.keys():
+            indices = np.array(l[key]).T
+            l[key] = (indices[0], indices[1], indices[2])
+
+
+        return l
+        
+
     def process(self, image, labels):
         """
         this does the processing magic.
@@ -121,15 +167,18 @@ class Processing:
         Note: image.shape == labels.shape
         """
 
+
+        # make image date to be float32. vigra needs this
+        
+        image = np.float32(image)
+
         #make sure that we have an image with exactly 3 dimensions,
         # as given by the example data blocks
         assert(len(image.shape) == 3)
         assert(image.shape == labels.shape)
         #assert(labels.type is np.uint32)
         
-        #bc = np.bincount(labels.flatten())
         nLabels = labels.max()
-        
         
         ### Preparation Phase
         ##  Scale Image according to scalers
@@ -144,7 +193,11 @@ class Processing:
         # channels for each scaled version. This becomes a little messy then. So
         # for now we only allow scalers that don't change dimension.
         
-        
+        if self.channelGenerators:
+            print "[FEATURES] Generating ", len(self.channelGenerators), " Channels"
+
+        i = 0
+        tenPerc = int(np.round(len(self.channelGenerators)*0.10))
         for cg in self.channelGenerators:
             # we need to distinguish here between intrinsic and external channel
             # generators
@@ -162,12 +215,24 @@ class Processing:
                     channels.append(curChannel)
                 else:
                     raise IndexError()
+            i += 1
+            if tenPerc and (i % tenPerc == 0):
+                print "           ...",int((i/tenPerc*10.00)), "%"
         
+        if self.scalers:
+            print "[FEATURES] Scaling input with ", len(self.scalers), "scalers..."
+       
+
+        ## Scaling Input
+        #  Do the same here again, but befor hand invoke scalers to get a scaled
+        #  version of the raw image.
+
         for scaler in self.scalers:
             scaledImage = scaler.scaled(image)
             for cg in self.scalingChannelGenerators:
                 channels.append(cg.channels(image))
         
+
         # make given channels to be a numpy array
         # do this by joining the last axis. This makes sense, as the last axis
         # contains the channels that were created by each channel generator
@@ -177,12 +242,19 @@ class Processing:
         channels = np.concatenate(channels, axis=3)
         nChannels = channels.shape[3]
         
+
+
         #store for all supervoxels the indices of voxels
-        supervoxels = []
-        for label in range(1, nLabels+1):
-            indices = np.where(labels == label)
-            supervoxels.append(indices)
+        if nLabels:
+            print "[FEATURES] Extracting supervoxels from labels..."
+            print "           (takes some time)"
+
+        labelIndices = self._getSupervoxels(labels)
+        supervoxels = labelIndices.values()
         
+        # check that labels are dense
+        assert(len(labelIndices.keys()) == nLabels)
+
         
         ### linearize channel data per supervoxel and calculate features
         #  By linearizing the data according to supervoxels we can speed up
@@ -202,11 +274,20 @@ class Processing:
         #        we can handle this in python 3.2 quite easily by the help of
         #        concurrent-frame work.
 
+        if nLabels:
+            print "[FEATURES] Computing supervoxel features for ", nLabels, "supervoxels..."
+
+        i = 0
+        tenPerc = int(np.round(nLabels*0.10))
         for label in range(0,nLabels):
-            # FIXME: this still does not linearize in memory
+
+            
+            # as this is "advanced indexing", we already get a copy of the data.
+            # this means that it should be linearized in memory already.
             voxel = channels[supervoxels[label]]
 
             # get the list of points belonging to the given supervoxel
+            # and calculate supervoxel features
             coordinates = np.transpose(supervoxels[label])
             
             localSFeatures = []
@@ -226,10 +307,16 @@ class Processing:
             localCFeatures = np.concatenate(localCFeatures)
             cfeatures.append(localCFeatures)
 
+            i += 1
+            if tenPerc and (i % tenPerc == 0):
+                print "          ...",int((i/tenPerc*10.00)), "%"
+
+
         # make the list to be numpy arrays
         cfeatures = np.array(cfeatures)
         sfeatures = np.array(sfeatures)
-        
+
+
         # concat all values into one big thing
         concats = []
         if(len(cfeatures) > 0):
@@ -240,7 +327,6 @@ class Processing:
             concats.append(sfeatures)
         
         allFeatures = np.concatenate(concats, axis=1)
-
         return allFeatures
 
 
@@ -249,7 +335,7 @@ class Processing:
 if __name__ == "__main__":
 
     # create test data.
-    n = 100
+    n = 200
     image = np.float32(np.random.randint(0, 255, size=(n, n, n)))
     image = np.float32(10*np.ones((n,n,n)))
     
@@ -276,14 +362,15 @@ if __name__ == "__main__":
 
     # Adds some channel generators
     proc.addChannelGenerator(ChannelGenerators.TestChannelGenerator())
-    for scale in [1.0, 5.0, 10.0]:
-        proc.addChannelGenerator(ChannelGenerators.LaplaceChannelGenerator(scale))
-        proc.addChannelGenerator(ChannelGenerators.GaussianGradientMagnitudeChannelGenerator(scale))
-        proc.addChannelGenerator(ChannelGenerators.EVofGaussianHessianChannelGenerator(scale))
+    #for scale in [1.0, 5.0, 10.0]:
+    #    proc.addChannelGenerator(ChannelGenerators.LaplaceChannelGenerator(scale))
+    #    proc.addChannelGenerator(ChannelGenerators.GaussianGradientMagnitudeChannelGenerator(scale))
+    #    proc.addChannelGenerator(ChannelGenerators.EVofGaussianHessianChannelGenerator(scale))
 
     proc.addSupervoxelFeature(SupervoxelFeatures.SizeFeature())
     proc.addSupervoxelFeature(SupervoxelFeatures.PCA())
     ret = proc.process(image, labels)
+
     print "###################"
     print ret
 

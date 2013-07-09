@@ -33,8 +33,8 @@ print "Starting to calculate segmentation..."
 plotall = 1
 
 #Subsampling
-nx = 240
-ny = 240
+nx = 100
+ny = 100
 nz = 60
 
 #Import data    
@@ -129,8 +129,22 @@ ws, maxRegionLabel = vigra.analysis.watersheds(dg.astype(numpy.uint8),neighborho
 print "Starting to Calculate Features on Supervoxels..."
 
 
-proc = Features.getMinimalFeatureSet()
+proc = Features.Processing()
 
-features = proc.process(numpy.float32(d), ws)
+# currently we don't need scalers.
+#proc.addScaler(Features.GaussianScaler(2.0))
 
-print "Feature Array Shape: ", features.shape()
+proc.addChannelFeature(Features.MeanChannelValueFeature())
+
+# Adds some channel generators
+for scale in [1.0, 5.0, 10.0]:
+    proc.addChannelGenerator(Features.LaplaceChannelGenerator(scale))
+    proc.addChannelGenerator(Features.GaussianGradientMagnitudeChannelGenerator(scale))
+    proc.addChannelGenerator(Features.EVofGaussianHessianChannelGenerator(scale))
+
+proc.addSupervoxelFeature(Features.SizeFeature())
+proc.addSupervoxelFeature(Features.PCA())
+
+features = proc.process(d, ws)
+
+print "Feature Array Shape: ", features.shape
