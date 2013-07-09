@@ -59,27 +59,21 @@ class PCA(SupervoxelFeature):
     values or even the PC vectors.
     """
 
-    def __init__(self, noAxes=3, PC=False):
+    def __init__(self, PC=False):
         """
         parameters:
             noAxes: the number of the principal components you want to calculate
             PC: also return the PC vectors 
         """
 
-        if noAxes > 3:
-            print 'WARNING: max number of principal axes can be 3. Will set axes = 3'
-            self.axes = 3
-        else:
-            self.axes = noAxes
-        
         self.calcEigVectors = PC
 
     
     def numFeatures(self):
         if self.calcEigVectors:
-            return self.axes + 3*self.axes
+            return 3 + 3*3
         else:
-            return self.axes
+            return 3
 
     def features(self, supervoxel):
 
@@ -95,11 +89,21 @@ class PCA(SupervoxelFeature):
         supervoxel = supervoxel.swapaxes(0, 1)
         # calculate singular value decomposition of supervoxel
         u, s, v = svd(supervoxel, full_matrices=False, compute_uv=True)
+        
+        s_out = np.zeros((3,))
+        s_out[0:s.shape[0]] = s[0:s.shape[0]]
+        
+        
+        u_out = np.zeros((9))
+        u = u.flatten()
+        if len(u) == 9:
+            u_out[0:u.shape[0]] = u[0:u.shape[0]]
 
+        
         if self.calcEigVectors:
-            return np.array(np.concatenate((s[0:self.axes], u[:,0], u[:,1], u[:,2])))
+            return np.array(np.concatenate((s_out, u_out)))
         else:
-            return np.array(s[0:self.axes])
+            return s_out
 
 ## TODO: Convex Hull Volume, Shape Probability, ...
 
