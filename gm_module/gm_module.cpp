@@ -29,7 +29,7 @@
 #include "src/pygm.hxx"
 
 // export my module
-BOOST_PYTHON_MODULE_INIT(_gm_module) {
+BOOST_PYTHON_MODULE_INIT(_adjGraph) {
 
     // Do not change next 4 lines
     import_array();
