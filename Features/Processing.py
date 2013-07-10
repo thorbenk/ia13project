@@ -122,38 +122,15 @@ class Processing:
         retreives the the indices for each supervoxel that is found in labels.
         """
 
-        #Beforehand np.where() has been used. But due to the fact, that you have
-        #to iterate nLabels time over the labels array, this becomes quite slow.
+        nLabels = labels.max()
+        l = []
+        # this a darn fucking slow, as we have to to this for each supervoxel
+        # we need a way to iterate only one time over the whole labels-array and
+        # create the indices on the fly
         #
-        #For a 256x256x60 labels object
-        # the where()-approach took round about a minute for 2000 supervoxels,
-        # whereas this approach now takes only a few seconds.
-        # Note that slow dictionaries and stuff is used and still exceeds the
-        # where()-function by nearly two orders...
-
-        it = np.nditer(labels, flags=['multi_index'])
-
-        # this stores the coordinates for each label.
-        # l = {0:[(0,0,0), ...],...}
-        l = {}
-
-
-        #iterate over the whole labels array and find indices for each label
-        while not it.finished:
-            index = it.multi_index
-            val= int(it[0])
-            
-            if val not in l:
-                l[val] = []
-            l[val].append(it.multi_index)
-            
-            it.iternext()
-
-        # iterate over all found labels and create a slicing-compatible array
-        for key in l.keys():
-            indices = np.array(l[key]).T
-            l[key] = (indices[0], indices[1], indices[2])
-
+        # I tried this, however this lead to strange memory leaks...
+        for i in range(1, nLabels+1):
+            l.append(np.where(labels == i))
 
         return l
         
@@ -168,8 +145,7 @@ class Processing:
         """
 
 
-        # make image date to be float32. vigra needs this
-        
+        # make image date to be float32. vigra needs this        
         image = np.float32(image)
 
         #make sure that we have an image with exactly 3 dimensions,
@@ -199,6 +175,8 @@ class Processing:
         i = 0
         tenPerc = int(np.round(len(self.channelGenerators)*0.10))
         for cg in self.channelGenerators:
+
+
             # we need to distinguish here between intrinsic and external channel
             # generators
             if(isinstance(cg, ChannelGenerators.IntrinsicChannelGenerator)):
@@ -218,6 +196,11 @@ class Processing:
             i += 1
             if tenPerc and (i % tenPerc == 0):
                 print "           ...",int((i/tenPerc*10.00)), "%"
+
+            # invoke garbage collector
+            gc.collect()
+
+
         
         if self.scalers:
             print "[FEATURES] Scaling input with ", len(self.scalers), "scalers..."
@@ -231,7 +214,8 @@ class Processing:
             scaledImage = scaler.scaled(image)
             for cg in self.scalingChannelGenerators:
                 channels.append(cg.channels(image))
-        
+
+        gc.collect()
 
         # make given channels to be a numpy array
         # do this by joining the last axis. This makes sense, as the last axis
@@ -249,13 +233,15 @@ class Processing:
             print "[FEATURES] Extracting supervoxels from labels..."
             print "           (takes some time)"
 
-        labelIndices = self._getSupervoxels(labels)
-        supervoxels = labelIndices.values()
-        
-        # check that labels are dense
-        assert(len(labelIndices.keys()) == nLabels)
+        #labelIndices = self._getSupervoxels(labels)
+        supervoxels = self._getSupervoxels(labels)
 
         
+        # check that labels are dense
+        #assert(len(labelIndices.keys()) == nLabels)
+
+        gc.collect()
+
         ### linearize channel data per supervoxel and calculate features
         #  By linearizing the data according to supervoxels we can speed up
         #  things heavily as we don't need to jump around in memory all the
@@ -279,16 +265,19 @@ class Processing:
 
         i = 0
         tenPerc = int(np.round(nLabels*0.10))
-        for label in range(0,nLabels):
 
+        for supervoxel in supervoxels:
+
+            if not supervoxel:
+                continue
             
             # as this is "advanced indexing", we already get a copy of the data.
             # this means that it should be linearized in memory already.
-            voxel = channels[supervoxels[label]]
+            voxel = channels[supervoxel]
 
             # get the list of points belonging to the given supervoxel
             # and calculate supervoxel features
-            coordinates = np.transpose(supervoxels[label])
+            coordinates = np.transpose(supervoxel)
             
             localSFeatures = []
             for sfeature in self.supervoxelFeatures:

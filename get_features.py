@@ -33,8 +33,8 @@ print "Starting to calculate segmentation..."
 plotall = 1
 
 #Subsampling
-nx = 100
-ny = 100
+nx = 255
+ny = 255
 nz = 60
 
 #Import data    
@@ -136,8 +136,10 @@ proc = Features.Processing()
 
 proc.addChannelFeature(Features.MeanChannelValueFeature())
 
+proc.addChannelGenerator(Features.TestChannelGenerator())
+
 # Adds some channel generators
-for scale in [1.0, 5.0, 10.0]:
+for scale in [1.0, 5.0]:
     proc.addChannelGenerator(Features.LaplaceChannelGenerator(scale))
     proc.addChannelGenerator(Features.GaussianGradientMagnitudeChannelGenerator(scale))
     proc.addChannelGenerator(Features.EVofGaussianHessianChannelGenerator(scale))
@@ -146,5 +148,10 @@ proc.addSupervoxelFeature(Features.SizeFeature())
 proc.addSupervoxelFeature(Features.PCA())
 
 features = proc.process(d, ws)
+
+
+g = h5py.File(f_path, 'w')
+g.create_dataset("features", data=features)
+g.close()
 
 print "Feature Array Shape: ", features.shape
