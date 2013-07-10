@@ -7,6 +7,10 @@ import matplotlib
 matplotlib.use("Qt4Agg")
 from matplotlib import pyplot as plot
 
+from png2h5 import labels as label_color
+four_zeros = np.zeros(4)
+
+
 if __name__ == "__main__":
     
     f1 = h5py.File("../data/block00_labels.h5",'r')
@@ -15,10 +19,10 @@ if __name__ == "__main__":
     sp     = f2['ws']
     labels = f1['volume']['data']
     
-    slices = [0,50,100]
+    slices = [0]
     
     index = 0
-    lable_table = np.zeros((0,5))
+    lable_table = np.zeros((0,5),dtype=np.uint32)
  
     index_dict = {}
     
@@ -28,6 +32,15 @@ if __name__ == "__main__":
         sp_current = sp[:,:,i]
         lb_current = labels[:,:,i]
         
+        '''
+        #tmp = label_color[ lb_current.transpose()]
+        #tmp = tmp[:,:,:3]
+        tmp = lb_current.transpose() == 2
+        plot.imshow(tmp)
+        plot.colorbar()
+        plot.show()
+        '''
+
         for u in np.unique(sp_current):
             index_dict[u] = index
             index+=1
@@ -44,5 +57,17 @@ if __name__ == "__main__":
                 if(lable != 0):
                     lable_table[ index_dict[spixel], lable] += 1
         
-    import pdb
-    pdb.set_trace()
+        print "Sigma lables:",np.sum(lable_table,axis=0) 
+        categories = np.zeros((np.max(sp_current)+1,),dtype=np.uint32)
+
+        for spixel_name in np.unique(sp_current):
+            weight = lable_table[index_dict[spixel_name]]
+            
+            if( sum(weight) >1 ):
+                category = np.argmax(weight) 
+                categories[spixel_name] = category
+        
+
+        pict = label_color[categories[sp_current]]
+        vigra.impex.writeImage(pict,"test_00_"+str(i)+".png")
+

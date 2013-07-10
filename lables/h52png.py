@@ -15,11 +15,11 @@ if __name__ == "__main__":
     
     for i in range(0,data.shape[2],10):
         vigra.impex.writeImage(data[:,:,i],"block00_"+str(i)+".png")
-
+        '''
         plot.imshow(data[:,:,i])
         plot.show()
         time.sleep(.2)
         plot.clf()
         plot.close()
-
+        '''
 
