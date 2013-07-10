@@ -6,6 +6,7 @@ import vigra
 import h5py
 import time
 import os
+
 """
 neeed specific names!
 
@@ -20,15 +21,20 @@ block00_<slice>_labels.png
 5 PSD             green      0 255   0
 """
 
-labels = np.array( 
-    ( (255, 255, 255,0),
+labels = np.array(
+      
+    ( 
+      (255, 255, 255,0),
       (0  ,   0, 255,0),
       (255,   0,   0,0),
       (255, 255,   0,0),
       (  0, 255,   0,0)))
 
+four_zeros = np.zeros(4)
+
+
 def getLabel(rgb):
-    
+    print rgb
     res = labels  - rgb
     res = np.apply_along_axis(np.linalg.norm,1,res)
 
@@ -38,8 +44,6 @@ def getLabel(rgb):
 def filename2addr(filename):
 	s = filename.split("_")
 	return s[:2]
-
-four_zeros = np.zeros(4)
 
 def file2array(path):
     img = vigra.impex.readImage(path).view(np.ndarray)
