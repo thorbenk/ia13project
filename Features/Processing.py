@@ -124,7 +124,7 @@ class Processing:
 
         nLabels = labels.max()
         l = []
-        # this a darn fucking slow, as we have to to this for each supervoxel
+        # this a darn fucking slow, as we have to do this for each supervoxel
         # we need a way to iterate only one time over the whole labels-array and
         # create the indices on the fly
         #

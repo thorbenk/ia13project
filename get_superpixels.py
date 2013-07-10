@@ -11,15 +11,12 @@ if __name__ == "__main__":
     
     #Parameters
     #Set  plotall to 1 to show superpixels
-    plotall = 1
+    plotall = 0
     
     #Subsampling
-    nx = 240
-    ny = 240
-    nz = 60
     
     #Import data    
-    f = h5py.File("block00.h5", 'r')
+    f = h5py.File("data/block00.h5", 'r')
     
     #Hesse-Matrix (Edge Detection)
     sig1 = 0.5
@@ -51,10 +48,12 @@ if __name__ == "__main__":
         
     
     
-    
-    
     d = f["volume/data"].value
     print d.shape
+
+    nx = d.shape[0]
+    ny = d.shape[1]
+    nz = d.shape[2]
 
     #Subsampling
     d = d[0:nx,0:ny,0:nz]
@@ -131,7 +130,7 @@ if __name__ == "__main__":
     
     
     #Export Data
-    g = h5py.File("ws.h5", 'w')
+    g = h5py.File("data/ws.h5", 'w')
     g.create_dataset("ws", data=ws)
     g.close()
     
