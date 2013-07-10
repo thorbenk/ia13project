@@ -159,4 +159,5 @@ def computeSupervoxels(blockName, slicing):
     print ws.shape
 
 if __name__ == '__main__':
-    computeSupervoxels('block00', (slice(100,200), slice(100,200), slice(10,110)))
+    from get_config import small_slicing
+    computeSupervoxels('block00', small_slicing) 
