@@ -1,6 +1,11 @@
 from os import listdir, getcwd
 from os.path import isfile, join
 
+import matplotlib
+matplotlib.use("Qt4Agg")
+from matplotlib import pyplot as plot
+
+
 import numpy as np
 import vigra
 import h5py
@@ -23,22 +28,22 @@ block00_<slice>_labels.png
 
 labels = np.array(
       
-    ( 
-      (255, 255, 255,0),
-      (0  ,   0, 255,0),
-      (255,   0,   0,0),
-      (255, 255,   0,0),
-      (  0, 255,   0,0)))
+    ( (  0,   0,   0,   0),
+      (255, 255, 255, 255),
+      (0  ,   0, 255, 255),
+      (255,   0,   0, 255),
+      (255, 255,   0, 255),
+      (  0, 255,   0, 255)))
 
+labels = labels[:,:3]
 four_zeros = np.zeros(4)
 
 
 def getLabel(rgb):
-    print rgb
-    res = labels  - rgb
+    res = labels  - rgb[:3]
     res = np.apply_along_axis(np.linalg.norm,1,res)
 
-    return np.argmin( res ) +1
+    return np.argmin( res )
 	
 
 def filename2addr(filename):
@@ -52,17 +57,24 @@ def file2array(path):
     #print label_img.shape
     for x in range(img.shape[0]):
         for y in range(img.shape[1]):
-            cur_rgb = img[x][y]
-            if (cur_rgb != four_zeros).all():
-                label_img[x,y] = getLabel(img[x][y])
-            else:
-                label_img[x,y] = 0;
+            label_img[x,y] = getLabel(img[x,y])
+    
+    '''
+    tmp = label_img == 1
+
+    plot.imshow(tmp)
+    plot.colorbar()
+    plot.show()
+
+    import pdb
+    pdb.set_trace()
+    '''
 
     return label_img
 	
 if __name__ == "__main__":
     mypath = getcwd()
-    files = [ f for f in listdir(mypath) if ( isfile(join(mypath,f)) and f.endswith("labels.png")) ]
+    files = [ f for f in listdir(mypath) if ( isfile(join(mypath,f)) and f.endswith("labels2.png")) ]
     
     name = "block00"
     filename = os.path.join("../","data",name+".h5")
