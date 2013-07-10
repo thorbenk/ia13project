@@ -62,7 +62,6 @@ def computeSuperpixelFeatures(blockName, slicing):
 
     features = proc.process(d, ws)
 
-
     g = h5py.File(f_path, 'w')
     g.create_dataset("features", data=features)
     g.close()

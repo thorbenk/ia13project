@@ -52,7 +52,6 @@ def computeSupervoxels(blockName, slicing):
         Figure 5:
             
     """
-
     dg = numpy.zeros((nx,ny,nz))
     dg_s = numpy.zeros((nx,ny,nz))    
     dg_th = numpy.zeros((nx,ny,nz))
