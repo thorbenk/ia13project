@@ -130,6 +130,8 @@ class Processing:
         #
         # I tried this, however this lead to strange memory leaks...
         for i in range(1, nLabels+1):
+            if i%50 == 0:
+                print '%d/%d' % (i, nLabels)
             l.append(np.where(labels == i))
 
         return l
