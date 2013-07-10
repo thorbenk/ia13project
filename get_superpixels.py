@@ -7,7 +7,7 @@ import sys
 import vigra
 from scipy import stats
 
-if __name__ == "__main__":
+def computeSupervoxels(blockName, slicing):
     
     #Parameters
     #Set  plotall to 1 to show superpixels
@@ -16,7 +16,14 @@ if __name__ == "__main__":
     #Subsampling
     
     #Import data    
-    f = h5py.File("data/block00.h5", 'r')
+    f = h5py.File('data/'+blockName+'.h5', 'r')
+    d = f["volume/data"].value
+    print "loaded raw data with shape=%r" % (d.shape,)
+    f.close()
+
+    d = d[slicing]
+    
+    nx, ny, nz = d.shape
     
     #Hesse-Matrix (Edge Detection)
     sig1 = 0.5
@@ -45,18 +52,7 @@ if __name__ == "__main__":
         Figure 5:
             
     """
-        
-    
-    
-    d = f["volume/data"].value
-    print d.shape
 
-    nx = d.shape[0]
-    ny = d.shape[1]
-    nz = d.shape[2]
-
-    #Subsampling
-    d = d[0:nx,0:ny,0:nz]
     dg = numpy.zeros((nx,ny,nz))
     dg_s = numpy.zeros((nx,ny,nz))    
     dg_th = numpy.zeros((nx,ny,nz))
@@ -161,3 +157,6 @@ if __name__ == "__main__":
         plot.show()
 
     print ws.shape
+
+if __name__ == '__main__':
+    computeSupervoxels('block00', (slice(100,200), slice(100,200), slice(10,110)))
