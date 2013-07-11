@@ -84,9 +84,48 @@ if __name__ == "__main__":
     def_category = np.argmax(category_vector,axis=1)
     
 
-    learn_func(def_category)
+    forest = learn_func(def_category)
+   
+    #Now that we learned the forest we can use this to classify
+    #unseen supervoxels
 
-    import pdb
-    pdb.set_trace()
+    slices_to_classify = [0,25,125,140,210]
+    
+ 
+    featureFn = "../data/featuresk0.h5"
+    featureDataPath = "features"
+    f = h5py.File(featureFn, 'r')
+    allfeatures = f[featureDataPath].value
+    
+    #import pdb
+    #pdb.set_trace()
+    
+    assert allfeatures.shape[0] == np.max(sp) 
+    
+    for i in slices_to_classify:
+        print "slice:",i
+
+        sp_current = sp[:,:,i]
+        lb_image = np.zeros(sp_current.shape)
+        
+
+        current_spixels = np.unique(sp_current)
+        
+        label_vector = np.zeros(np.max(sp_current)+1,dtype=np.uint32)
+
+        for j in range(len(sp_current)):
+            label_vector[sp_current[j]] = j
+        
+        #get the features for these supervolxels
+        current_features = np.float32( allfeatures[current_spixels] )
+        current_categories = forest.predictProbabilities(current_features)
+        cur_label = np.argmax(current_categories,axis=1) + 1
+
+        tmp = cur_label[label_vector[sp_current]]
+        pict = label_color[tmp]
+        vigra.impex.writeImage(pict,"res_00_"+str(i)+".png")
+        
+        import pdb
+        pdb.set_trace()
 
 

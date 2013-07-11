@@ -21,7 +21,7 @@ def learn_func(category_vector):
 
     f = h5py.File(featureFn, 'r')
     allfeatures = f[featureDataPath].value
-
+    
     nvoxels = allfeatures.shape[0]
     nfeatures = allfeatures.shape[1]
     
@@ -41,12 +41,16 @@ def learn_func(category_vector):
                 labels[j] = category_vector[i]
                 j = j+1
     
+    
+    print "There are",j,"training examples"
+
+    print "Distribution of labels", np.bincount(np.int32(labels.flat))
+
     RF = learn(features, labels)
 
 
-    probabilities = classify(RF, np.float32(allfeatures))
+    #probabilities = classify(RF, np.float32(allfeatures))
+    #print probabilities
+    
+    return RF
 
-    print probabilities
-
-    import pdb
-    pdb.set_trace()
