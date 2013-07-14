@@ -39,27 +39,27 @@ struct edge // key type for map
     edge(uint32_t sp1, uint32_t sp2) : v1(sp1), v2(sp2) {}
 };
 
-struct edgeData
+struct edgeData // for each edge store certain features/data
 {
     size_t volume;
-    size_t circumference;
+    //size_t circumference; not implemented
     float  avg_value;
     float  avg_gradient;
     float  std_value;
     float  std_gradient;
     vigra::NumpyArray<2,uint32_t> face;
-    size_t size1;
-    size_t size2;
+    //size_t size1; not implemented
+    //size_t size2; not implemented
 
     size_t counter;
-    edgeData() : volume(0), circumference(0), avg_gradient(0), avg_value(0), std_gradient(0), std_value(0), size1(0), size2(0), counter(0) {} // initialise all to zero
+    edgeData() : volume(0), avg_gradient(0), avg_value(0), std_gradient(0), std_value(0), counter(0) {} // initialise all to zero
 };
-bool operator==(edge const& p1, edge const& p2) // speicify equalit-relation for keys
+bool operator==(edge const& p1, edge const& p2) // speicify equality-relation for keys
 {
     return p1.v1 == p2.v1 && p1.v2 == p2.v2;
-    }
+}
 
-std::size_t hash_value(edge const& p) // overload hash-fu for custom key-type
+std::size_t hash_value(edge const& p) // overload hash-fuction for custom key-type
 {
     std::size_t seed = 0;
     boost::hash_combine(seed, p.v1);
@@ -70,11 +70,15 @@ std::size_t hash_value(edge const& p) // overload hash-fu for custom key-type
 typedef boost::unordered_map<edge,edgeData> EdgeMapType;
 
 boost::python::tuple adjGraph(vigra::NumpyArray<3,uint32_t> spixels,
-                              vigra::NumpyArray<3, float>   data)
+                              vigra::NumpyArray<3, float>   data,
+                              bool facelist)
 {
     size_t dimX=spixels.shape(0);
+    printf("dimX=%d\t", int(dimX));
     size_t dimY=spixels.shape(1);
+    printf("dimY=%d\t", int(dimY));
     size_t dimZ=spixels.shape(2);
+    printf("dimZ=%d\n", int(dimZ));
     uint32_t sp1,sp2;
     edge key(0,0);
     size_t num_e = 0;
@@ -88,34 +92,35 @@ boost::python::tuple adjGraph(vigra::NumpyArray<3,uint32_t> spixels,
             {
                 if((x<dimX-1) && (spixels(x,y,z) != spixels(x+1,y,z))) // 1. check bounds 2. if two adjecant voxel have different classification
                 {
-                    sp1 = std::min(spixels(x,y,z),spixels(x+1,y,z));
-                    sp2 = std::max(spixels(x,y,z),spixels(x+1,y,z));
-                    key = edge(sp1,sp2);
-                    if (edges.find(key) == edges.end()) // if this edge was not added before
+                    sp1 = std::min(spixels(x,y,z),spixels(x+1,y,z)); // use the smaller sp-id as the first key
+                    sp2 = std::max(spixels(x,y,z),spixels(x+1,y,z)); // the greater as the second key
+
+                    key = edge(sp1,sp2);                // create an key object
+                    if (edges.find(key) == edges.end()) // if there is no edge for this key in the dictionary
                     {
-                        edges[key] = edgeData();
-                        num_e++;
+                        edges[key] = edgeData();        // create a new edge in dictionary
+                        num_e++;                        // increment number of edges
                     }
-                    edges[key].volume += 2;
+                    edges[key].volume += 2;             // in any case increment the number of pixels in the edge by two (we regard the whole pair of pixels)
                 }
-                if((y<dimZ-1) && (spixels(x,y,z) != spixels(x,y+1,z))) // 1. check bounds 2. if two adjecant voxel have different classification
+                if((y<dimY-1) && (spixels(x,y,z) != spixels(x,y+1,z)))
                 {
                     sp1 = std::min(spixels(x,y,z),spixels(x,y+1,z));
                     sp2 = std::max(spixels(x,y,z),spixels(x,y+1,z));
                     key = edge(sp1,sp2);
-                    if (edges.find(key) == edges.end()) // if this edge was not added before
+                    if (edges.find(key) == edges.end())
                     {
                         edges[key] = edgeData();
                         num_e++;
                     }
                     edges[key].volume += 2;
                 }
-                if((z<dimZ-1) && (spixels(x,y,z) != spixels(x,y,z+1))) // 1. check bounds 2. if two adjecant voxel have different classification
+                if((z<dimZ-1) && (spixels(x,y,z) != spixels(x,y,z+1)))
                 {
                     sp1 = std::min(spixels(x,y,z),spixels(x,y,z+1));
                     sp2 = std::max(spixels(x,y,z),spixels(x,y,z+1));
                     key = edge(sp1,sp2);
-                    if (edges.find(key) == edges.end()) // if this edge was not added before
+                    if (edges.find(key) == edges.end())
                     {
                         edges[key] = edgeData();
                         num_e++;
@@ -126,13 +131,15 @@ boost::python::tuple adjGraph(vigra::NumpyArray<3,uint32_t> spixels,
         }
     }
 
-    BOOST_FOREACH(EdgeMapType::value_type &p, edges)
+    if(facelist) // if the caller requires the return of the face list
     {
-        p.second.face = vigra::NumpyArray<2,uint32_t>(vigra::NumpyArray<2,uint32_t>::difference_type(p.second.volume,3));  // Initialise list of voxels to correct lenght and for 3 coordinates
+        BOOST_FOREACH(EdgeMapType::value_type &p, edges)
+        {
+            p.second.face = vigra::NumpyArray<2,uint32_t>(vigra::NumpyArray<2,uint32_t>::difference_type(p.second.volume,3));  // Initialise coordinate list of pixels to correct lenght and for 3 coordinates
+        }
     }
 
-    EdgeMapType::iterator it;
-    edgeData * value;
+    edgeData * value; // this points to the value found in the dictionary
     for(size_t z=0; z<dimZ; ++z)
     {
         for(size_t y=0; y<dimY; ++y)
@@ -141,20 +148,25 @@ boost::python::tuple adjGraph(vigra::NumpyArray<3,uint32_t> spixels,
             {
                 if((x<dimX-1) && (spixels(x,y,z) != spixels(x+1,y,z))) // 1. check bounds 2. if two adjecant voxel have different classification
                 {
-                    sp1 = std::min(spixels(x,y,z),spixels(x+1,y,z));
-                    sp2 = std::max(spixels(x,y,z),spixels(x+1,y,z));
-                    key = edge(sp1,sp2);
-                    value = &(edges.find(key)->second);
+                    sp1 = std::min(spixels(x,y,z),spixels(x+1,y,z));  // use the smaller sp-id as the first key
+                    sp2 = std::max(spixels(x,y,z),spixels(x+1,y,z));  // the greater as the second key
+                    key = edge(sp1,sp2);                              // create key object
+                    value = &(edges.find(key)->second);               // lookup value in dictionary. (return of find is a tuple, therfore ->second. Because the scanning is the same as in the previous loop, it is not possible that there is no lookup-value for a key, otherwise boost fails or sth...)
 
-                    value->face(value->counter, 0) = x;
-                    value->face(value->counter, 1) = y;
-                    value->face(value->counter, 2) = z;   value->counter++;
-                    value->face(value->counter, 0) = x+1;;
-                    value->face(value->counter, 1) = y;
-                    value->face(value->counter, 2) = z;   value->counter++;
+                    if(facelist)                                // if the caller requires the return of the face list
+                    {
+                        value->face(value->counter, 0) = x;     // insert the x-coord of the first pixel in the array. The counter is used to find the next free line.
+                        value->face(value->counter, 1) = y;     // insert the y-coord...
+                        value->face(value->counter, 2) = z;
+                        value->counter++;                       // now a complete point was added -> increment the counter
+                        value->face(value->counter, 0) = x+1;;  // add the x-coordinate of the neighbouring point in the next line in the array
+                        value->face(value->counter, 1) = y;     // ...
+                        value->face(value->counter, 2) = z;
+                        value->counter++;
+                    }
 
-                    value->avg_value    += (data(x,y,z) + data(x+1,y,z)) / float(value->volume);
-                    value->avg_gradient += 2*abs(data(x,y,z) - data(x+1,y,z)) / float(value->volume);
+                    value->avg_value    += (data(x,y,z) + data(x+1,y,z)) / float(value->volume);        // add the contribution of this pixel pair to the average value on the edge
+                    value->avg_gradient += 2*abs(data(x,y,z) - data(x+1,y,z)) / float(value->volume);   // also add the gradient contribution, factor two is needed, because for 2N pixels we can only caluculate N gradients
                 }
                 if((y<dimY-1) && (spixels(x,y,z) != spixels(x,y+1,z))) // 1. check bounds 2. if two adjecant voxel have different classification
                 {
@@ -163,12 +175,17 @@ boost::python::tuple adjGraph(vigra::NumpyArray<3,uint32_t> spixels,
                     key = edge(sp1,sp2);
                     value = &(edges.find(key)->second);
 
-                    value->face(value->counter, 0) = x;
-                    value->face(value->counter, 1) = y;
-                    value->face(value->counter, 2) = z;   value->counter++;
-                    value->face(value->counter, 0) = x;
-                    value->face(value->counter, 1) = y+1;
-                    value->face(value->counter, 2) = z;   value->counter++;
+                    if(facelist)
+                    {
+                        value->face(value->counter, 0) = x;
+                        value->face(value->counter, 1) = y;
+                        value->face(value->counter, 2) = z;
+                        value->counter++;
+                        value->face(value->counter, 0) = x;
+                        value->face(value->counter, 1) = y+1;
+                        value->face(value->counter, 2) = z;
+                        value->counter++;
+                    }
 
                     value->avg_value    += (data(x,y,z) + data(x,y+1,z)) / float(value->volume);
                     value->avg_gradient += 2*abs(data(x,y,z) - data(x,y+1,z)) / float(value->volume);
@@ -179,12 +196,17 @@ boost::python::tuple adjGraph(vigra::NumpyArray<3,uint32_t> spixels,
                     sp2 = std::max(spixels(x,y,z),spixels(x,y,z+1));
                     key = edge(sp1,sp2);
                     value = &(edges.find(key)->second);
-                    value->face(value->counter, 0) = x;
-                    value->face(value->counter, 1) = y;
-                    value->face(value->counter, 2) = z;   value->counter++;
-                    value->face(value->counter, 0) = x;
-                    value->face(value->counter, 1) = y;
-                    value->face(value->counter, 2) = z+1; value->counter++;
+                    if(facelist)
+                    {
+                        value->face(value->counter, 0) = x;
+                        value->face(value->counter, 1) = y;
+                        value->face(value->counter, 2) = z;
+                        value->counter++;
+                        value->face(value->counter, 0) = x;
+                        value->face(value->counter, 1) = y;
+                        value->face(value->counter, 2) = z+1;
+                        value->counter++;
+                    }
 
                     value->avg_value    += (data(x,y,z) + data(x,y,z+1)) / float(value->volume);
                     value->avg_gradient += 2*abs(data(x,y,z) - data(x,y,z+1)) / float(value->volume);
@@ -193,21 +215,22 @@ boost::python::tuple adjGraph(vigra::NumpyArray<3,uint32_t> spixels,
         }
     }
 
-    vigra::NumpyArray<2,float> edges_arr;
+    vigra::NumpyArray<2,float> edges_arr;       // Create new array to return the edges' vertices and their features compactly
     edges_arr.reshape(vigra::Shape2(num_e,5));
-    boost::python::list face_list;
+    boost::python::list face_list;              // The arrays with the coordinates of the surface pixels are appended to a list
     size_t i = 0;
     BOOST_FOREACH(EdgeMapType::value_type p, edges)
     {
-        edges_arr(i,0) = p.first.v1;
-        edges_arr(i,1) = p.first.v2;
-        edges_arr(i,2) = p.second.volume;
+        edges_arr(i,0) = p.first.v1;           // first vertice of edge
+        edges_arr(i,1) = p.first.v2;           // second vertice of edge
+        edges_arr(i,2) = p.second.volume;      // and the features...
         edges_arr(i,3) = p.second.avg_value;
         edges_arr(i,4) = p.second.avg_gradient;
-        face_list.append(p.second.face);
+        if(facelist) face_list.append(p.second.face);
         i++;
     }
-    return boost::python::make_tuple(edges_arr,face_list);
+    if(facelist) return boost::python::make_tuple(edges_arr,face_list);
+    else return boost::python::make_tuple(edges_arr);
 }
 
 void export_adjGraph()
@@ -222,11 +245,12 @@ void export_adjGraph()
     // export the function to python
     boost::python::def("adjGraph", vigra::registerConverters(&adjGraph) ,
                        (
-                           boost::python::arg("spixels, data")
+                           boost::python::arg("spixels, data, getsurfaces")
                        ),
                        "Args:\n\n"
-                       "   spixels : 3-d array of superpixels (SP), denoted by different uint32-values, NumpyArray \n\n"
-                       "   data    : raw image data to compute edgewise features float32-NumpyArray\n\n"
+                       "   spixels    : 3-d array of superpixels (SP), denoted by different uint32-values, NumpyArray \n\n"
+                       "   data       : raw image data to compute edgewise features float32-NumpyArray\n\n"
+                       "   getsurfaces: BOOL, turn on to get the second return argument, if turned off, the return value is still a tuple containing only on element\n\n"
                        "returns: \n\n"
                        "   edges     : array of adjacent SP in a 6-neighbourhood and their features in the form: (sp1| sp2 | volume | average | gradient ) . The number of the first SP is always > the number of the second SP.\n\n"
                        "               * volume   : number of pixels in the facing surface\n"
