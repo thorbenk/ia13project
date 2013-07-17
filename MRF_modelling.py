@@ -3,6 +3,7 @@ from _adjGraph import adjGraph
 import h5py
 import numpy as np
 import cPickle as pickle
+omport opengm
 
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import pyplot as plt
@@ -37,28 +38,25 @@ def MRF_modelling(superpixels, labels, unaries, data, p=0.2):
   edges, surfaces = adjGraph(superpixels, data, False)
  # p      : smoothing parameter
  # Labels : is supposed to be an array: length = #SP, width= #Labels with the probaility for each label and each SP  
-  
-  nLabels    = labels.shape[1]   # The width of the labels array is the number of different labels
-  nVariables = superpixels.max() # The max number of the sp ID is the total number of SPs
-  nEdges     = edges.shape[0]    # Number of edges = lenght of edges-array
-  edgeVis    = edges[:,0:2]      # Vertice-Tuples in Edges list
-  
-  unaryValues= labels
+
+  nVariables  = superpixels.max()  
   sameLabel  = np.zeros((nVariables,1))
   diffLabel  = np.ones((nVariables,1)) * p
   edgeValues = np.concatenate((sameLabel, diffLabel), axis=1)
      
       
   gm = getGraphicalModel(
-    nLabels     = nLabels,
-    nVariables  = nVariables,
-    nEdges      = nEdges,
-    edgeVis     = edgeVis,
-    unaryValues = unaryValues,
+    nLabels     = labels.shape[1],   # The width of the labels array is the number of different labels
+    nVariables  = superpixels.max(), # The max number of the sp ID is the total number of SPs
+    nEdges      = edges.shape[0],    # Number of edges = lenght of edges-array
+    edgeVis     = edges[:,0:2],      # Vertice-Tuples in Edges list
+    unaryValues = labels,
     edgeValues  = edgeValues,
     gmOperator  = 'adder')
-    
-  gm
+  
+  infer = opengm.inference.AlphaBetaSwap(gm)
+  infer.infer()
+  result = infer.arg()
   
   
     
