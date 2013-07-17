@@ -123,7 +123,7 @@ class Processing:
         """
 
 
-        bc = np.bincount(labels.flatten())
+        bc = np.bincount(labels.flatten().astype(np.int32))
 
         nLabels = labels.max()
         nCoords = len(labels.flatten())
