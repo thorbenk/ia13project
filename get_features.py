@@ -49,7 +49,6 @@ def computeSuperpixelFeatures(blockName, slicing):
 
     proc.addChannelFeature(Features.MeanChannelValueFeature())
 
-    proc.addChannelGenerator(Features.TestChannelGenerator())
 
     # Adds some channel generators
     for scale in [1.0, 5.0]:

@@ -1,1 +1,1 @@
-small_slicing = (slice(100,200), slice(100,200), slice(10,110))
+small_slicing = (slice(0,512), slice(0,512), slice(0,256))

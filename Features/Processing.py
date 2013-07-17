@@ -122,20 +122,55 @@ class Processing:
         retreives the the indices for each supervoxel that is found in labels.
         """
 
+
+        bc = np.bincount(labels.flatten())
+
         nLabels = labels.max()
+        nCoords = len(labels.flatten())
         l = []
-        # this a darn fucking slow, as we have to do this for each supervoxel
-        # we need a way to iterate only one time over the whole labels-array and
-        # create the indices on the fly
-        #
-        # I tried this, however this lead to strange memory leaks...
+
+        # try to avoid allocating too much memory by preallocating. this makes
+        # things faster as well, as we don't have to grow the list
+        # keep in mind: this takes 1.25GB for 512*512*512 data
+
+        larr = np.zeros((len(labels.flatten()), 3), dtype=np.uint16)
+        lptr = np.zeros((nLabels+1), dtype=np.uint32)
+
+
+        # create initial "pointer"
+        ptr = 0
         for i in range(1, nLabels+1):
-            if i%50 == 0:
-                print '%d/%d' % (i, nLabels)
-            l.append(np.where(labels == i))
+            lptr[i] = ptr
+            ptr += bc[i]
+        
+        # go through all voxels and store corresponding coordinate
+        it = np.nditer(labels, flags=['multi_index'])
+        i = 0
+        perc = nCoords*0.05
+        while not it.finished:
+            label = it[0]
+            coord = np.array(it.multi_index)
+
+            localptr = lptr[label]
+            larr[localptr] = coord
+            lptr[label] = localptr + 1
+
+            it.iternext()
+
+            i += 1
+            if perc and (i % perc == 0):
+                print "           ...",int((i/perc*5.00)), "%"
+        
+        # create views on the coordinate list and sort them by supervoxels
+        ptr = 0
+        for i in range(1, nLabels+1):
+            view = larr[ptr:ptr+bc[i]]
+            l.append(view.T)
+            ptr += bc[i]
 
         return l
-        
+
+
 
     def process(self, image, labels):
         """
@@ -173,6 +208,8 @@ class Processing:
         
         if self.channelGenerators:
             print "[FEATURES] Generating ", len(self.channelGenerators), " Channels"
+        
+        startT = time.clock()
 
         i = 0
         tenPerc = int(np.round(len(self.channelGenerators)*0.10))
@@ -202,7 +239,7 @@ class Processing:
             # invoke garbage collector
             gc.collect()
 
-
+        print "           Done. It took ", time.clock()-startT
         
         if self.scalers:
             print "[FEATURES] Scaling input with ", len(self.scalers), "scalers..."
@@ -234,9 +271,10 @@ class Processing:
         if nLabels:
             print "[FEATURES] Extracting supervoxels from labels..."
             print "           (takes some time)"
-
+        startT = time.clock()
         #labelIndices = self._getSupervoxels(labels)
         supervoxels = self._getSupervoxels(labels)
+        print "           Done. It took ", time.clock()-startT
 
         
         # check that labels are dense
@@ -265,14 +303,17 @@ class Processing:
         if nLabels:
             print "[FEATURES] Computing supervoxel features for ", nLabels, "supervoxels..."
 
+        startT = time.clock()
+
         i = 0
         tenPerc = int(np.round(nLabels*0.10))
 
         for supervoxel in supervoxels:
 
-            if not supervoxel:
-                continue
-            
+           
+            # convert array of coordinates into advanced slicing notation
+            supervoxel = (supervoxel[0], supervoxel[1], supervoxel[2])
+
             # as this is "advanced indexing", we already get a copy of the data.
             # this means that it should be linearized in memory already.
             voxel = channels[supervoxel]
@@ -302,6 +343,8 @@ class Processing:
             if tenPerc and (i % tenPerc == 0):
                 print "          ...",int((i/tenPerc*10.00)), "%"
 
+        # print out computation time
+        print "           Done. It took ", time.clock()-startT
 
         # make the list to be numpy arrays
         cfeatures = np.array(cfeatures)
@@ -326,7 +369,7 @@ class Processing:
 if __name__ == "__main__":
 
     # create test data.
-    n = 200
+    n = 70
     image = np.float32(np.random.randint(0, 255, size=(n, n, n)))
     image = np.float32(10*np.ones((n,n,n)))
     
