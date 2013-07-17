@@ -26,7 +26,7 @@ def computeSupervoxels(blockName, slicing):
     print "loaded raw data with shape=%r" % (d.shape,)
     f.close()
 
-    slicing = (slice(0,100), slice(0,110), slice(0,100)) #FIXME
+    slicing = (slice(0,200), slice(0,200), slice(0,100)) #FIXME
     print "apply slicing =", slicing
     d = d[slicing]
 
@@ -44,7 +44,7 @@ def computeSupervoxels(blockName, slicing):
     #Find Seeds for watershed
     #Hesse-Matrix for seed detection
     sig1b = 2
-    sig2b = 5
+    sig2b = 6
     
     #Smoothing for seed detection
     sigmab = 0.1
@@ -63,7 +63,8 @@ def computeSupervoxels(blockName, slicing):
     
     #Hesse-Matrix
     print "hessian of gaussian"
-    dg = vigra.filters.hessianOfGaussianEigenvalues(d.astype(numpy.float32),scale=sig2)[:,:,:,0]
+    dg = vigra.filters.gaussianGradientMagnitude(d.astype(numpy.float32),sig2)
+    
     writeSlice("sv_01.jpg", dg, z) 
 
     print "dg.min()= %f, dg.max()=%f" % (dg.min(), dg.max())
@@ -97,7 +98,7 @@ def computeSupervoxels(blockName, slicing):
     #Hesse-Matrix
   
     print "hessian of gaussian, smoothed for seeds"
-    dg_s = vigra.filters.hessianOfGaussianEigenvalues(d.astype(numpy.float32),scale=sig2b)[:,:,:,0]
+    dg_s = vigra.filters.gaussianGradientMagnitude(d.astype(numpy.float32),sig2b)
     writeSlice("sv_03.jpg", dg_s, z) 
     
     #Rescaling    
@@ -136,9 +137,15 @@ def computeSupervoxels(blockName, slicing):
     ################################
     
     #Watershed
-    ws, maxRegionLabel = vigra.analysis.watersheds(dg.astype(numpy.uint8),neighborhood = 6, seeds=seeds,method = 'Turbo')
-
+    ws, maxRegionLabel = vigra.analysis.watersheds(dg.astype(numpy.uint8),neighborhood = 6, seeds = seeds, method = 'Turbo')
+    
     relabel = (numpy.random.random((maxRegionLabel+1, 3))*255).astype(numpy.uint8)
+    
+    print relabel
+    print ws.shape
+    print '######'
+    print maxRegionLabel
+    
     wsImg = relabel[ws[:,:,z]]
     print wsImg.shape, wsImg.dtype
     vigra.impex.writeImage(wsImg, "sv_06.jpg", compression='90')
