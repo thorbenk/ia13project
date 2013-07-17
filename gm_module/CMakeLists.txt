@@ -7,6 +7,8 @@ ELSE()
    SET(CMAKE_BUILD_TYPE Debug CACHE STRING "Choose the type of build, options are: None(CMAKE_CXX_FLAGS or CMAKE_C_FLAGS used) Debug Release RelWithDebInfo MinSizeRel.")
 ENDIF()
 
+
+include_directories(/usr/lib/python2.7/site-packages/numpy/core/include)
 #--------------------------------------------------------------
 # gm_module
 #--------------------------------------------------------------
