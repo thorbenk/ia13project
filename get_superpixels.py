@@ -8,6 +8,7 @@ import vigra
 from scipy import stats
 
 def computeSupervoxels(blockName, slicing):
+    z = 42
     
     #Parameters
     #Set  plotall to 1 to show superpixels
@@ -21,15 +22,17 @@ def computeSupervoxels(blockName, slicing):
     print "loaded raw data with shape=%r" % (d.shape,)
     f.close()
 
+    slicing = (slice(0,200), slice(0,200), slice(0,100)) #FIXME
+    print "apply slicing =", slicing
     d = d[slicing]
+
+    vigra.impex.writeImage(d[:,:,z], "sv_00.jpg", compression='90')
     
     nx, ny, nz = d.shape
     
     #Hesse-Matrix (Edge Detection)
     sig1 = 0.5
     sig2 = 6
-    stepS = 1
-    winS = 0 
     
     #Smoothing
     sigma = 0.1  
@@ -38,8 +41,6 @@ def computeSupervoxels(blockName, slicing):
     #Hesse-Matrix for seed detection
     sig1b = 2
     sig2b = 9
-    stepSb = 1
-    winSb = 0 
     
     #Smoothing for seed detection
     sigmab = 0.1
@@ -57,9 +58,14 @@ def computeSupervoxels(blockName, slicing):
     dg_th = numpy.zeros((nx,ny,nz))
     
     #Hesse-Matrix
-    dg = vigra.filters.gaussianSmoothing(d.astype(numpy.float32),sig1)    
-    for i in range (0,d.shape[2]):    
-        dg[:,:,i] = numpy.abs(numpy.sum(vigra.filters.hessianOfGaussian(d[:,:,i].astype(numpy.float32),sigma = sig2,step_size = stepS,window_size = winS),axis=2))    
+    print "hessian of gaussian"
+    dg = vigra.filters.hessianOfGaussianEigenvalues(d.astype(numpy.float32),scale=sig2)[:,:,:,0]
+
+    fname = "sv_01.jpg" 
+    print "writing image '%s'" % (fname,)
+    vigra.impex.writeImage(dg[:,:,z], "sv_01.jpg", compression='90')
+
+    print "dg.min()= %f, dg.max()=%f" % (dg.min(), dg.max())
     
     #Rescaling    
     dg = dg/numpy.max(dg)*255
@@ -89,10 +95,10 @@ def computeSupervoxels(blockName, slicing):
     ################################
     #Find Seeds
     #Hesse-Matrix
-    
+   
     dg_s = vigra.filters.gaussianSmoothing(d.astype(numpy.float32),sig1b)    
     for i in range (0,d.shape[2]):    
-        dg_s[:,:,i] = numpy.abs(numpy.sum(vigra.filters.hessianOfGaussian(d[:,:,i].astype(numpy.float32),sigma = sig2b,step_size = stepSb,window_size = winSb),axis=2))    
+        dg_s[:,:,i] = numpy.abs(numpy.sum(vigra.filters.hessianOfGaussian(d[:,:,i].astype(numpy.float32),sigma = sig2b),axis=2))    
     
     #Rescaling    
     dg_s = dg_s/numpy.max(dg_s)*255
