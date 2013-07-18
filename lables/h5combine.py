@@ -81,8 +81,14 @@ if __name__ == "__main__":
     for index,val in index_dict.iteritems():
         category_vector[index] = lable_table[val]
     
-    def_category = np.argmax(category_vector,axis=1)
+
     
+
+    def_category = np.argmax(category_vector,axis=1)
+
+    out = h5py.File("../data/labels.h5", "w")
+    out.create_dataset("labels", data = category_vector)
+    out.close()
 
     forest = learn_func(def_category)
    

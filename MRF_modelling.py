@@ -3,6 +3,7 @@ from _adjGraph import adjGraph
 import h5py
 import numpy as np
 import cPickle as pickle
+import opengm
 
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import pyplot as plt
@@ -32,36 +33,51 @@ def printSurf(surf):
   ax.scatter(xs=surf[:,0], ys=surf[:,1], zs=surf[:,2])
   plt.draw()
 
+def getData():
+  l = h5py.File("data/labels.h5", "r")
+  labels = l["labels"].value
+  labels = labels/labels.sum(axis=1)
+  
+  f = h5py.File('data/block00.h5', 'r')
+  data = f['volume/data'].value
+  
+  d = h5py.File("data/ws.h5",'r')
+  sp = d['ws'].value
+  edges = adjGraph(sp, data, False)
 
-def MRF_modelling(superpixels, labels, unaries, data, p=0.2):
-  edges, surfaces = adjGraph(superpixels, data, False)
+  return data, sp, edges, labels
+
+def MRF_modelling(superpixels, labels, edges, data, p=0.2):
  # p      : smoothing parameter
  # Labels : is supposed to be an array: length = #SP, width= #Labels with the probaility for each label and each SP  
-  
-  nLabels    = labels.shape[1]   # The width of the labels array is the number of different labels
-  nVariables = superpixels.max() # The max number of the sp ID is the total number of SPs
-  nEdges     = edges.shape[0]    # Number of edges = lenght of edges-array
-  edgeVis    = edges[:,0:2]      # Vertice-Tuples in Edges list
-  
-  unaryValues= labels
+  labels = l["labels"].value
+  import pdb
+  pdb.set_trace()
+
+  labels = labels/labels.sum(axis=1)
+
+  nVariables  = superpixels.max()  
   sameLabel  = np.zeros((nVariables,1))
   diffLabel  = np.ones((nVariables,1)) * p
   edgeValues = np.concatenate((sameLabel, diffLabel), axis=1)
      
       
   gm = getGraphicalModel(
-    nLabels     = nLabels,
-    nVariables  = nVariables,
-    nEdges      = nEdges,
-    edgeVis     = edgeVis,
-    unaryValues = unaryValues,
+    nLabels     = labels.shape[1],   # The width of the labels array is the number of different labels
+    nVariables  = superpixels.max(), # The max number of the sp ID is the total number of SPs
+    nEdges      = edges.shape[0],    # Number of edges = lenght of edges-array
+    edgeVis     = edges[:,0:2],      # Vertice-Tuples in Edges list
+    unaryValues = labels,
     edgeValues  = edgeValues,
     gmOperator  = 'adder')
-    
-  gm
   
-  
-    
-  return gm
+  infer = opengm.inference.AlphaBetaSwap(gm)
+  infer.infer()
+  result = infer.arg()
 
-       
+   
+  return result
+
+
+data, sp, edges, labels = getData()
+MRF_modelling(sp, labels, edges, data)
