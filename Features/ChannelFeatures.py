@@ -37,7 +37,6 @@ class ChannelFeature:
         raise NotImplementedError()
 
 
-
 class MeanChannelValueFeature(ChannelFeature):
     """
     Computes for each channel the mean value over all voxels    
@@ -49,10 +48,38 @@ class MeanChannelValueFeature(ChannelFeature):
         return 1
 
 
-###############################
-# TODO:
-# Beside implementing the ChannelHistogramFeature 
-# also add median, stddev and variance.
+class MedianChannelValueFeature(ChannelFeature):
+    """
+    Computes for each channel the mean value over all voxels    
+    """
+    def features(self, voxels):
+        return np.median(voxels, axis=0)
+
+    def numFeatures(self, channels):
+        return 1
+
+
+class StdDeviationChannelValueFeature(ChannelFeature):
+    """
+    Computes for each channel the mean value over all voxels    
+    """
+    def features(self, voxels):
+        return np.std(voxels, axis=0)
+
+    def numFeatures(self, channels):
+        return 1
+        
+
+class VarianceChannelValueFeature(ChannelFeature):
+    """
+    Computes for each channel the mean value over all voxels    
+    """
+    def features(self, voxels):
+        return np.var(voxels, axis=0)
+
+    def numFeatures(self, channels):
+        return 1
+
 
 class ChannelHistogramFeature(ChannelFeature):
     """
@@ -63,8 +90,6 @@ class ChannelHistogramFeature(ChannelFeature):
         self.bins = bins
         self.binEdges = np.arange(0, 1.0, 1.0/bins)
         self.binEdges = np.append(self.binEdges, [1.0])
-
-
 
     def numFeatures(self):
         return  self.bins

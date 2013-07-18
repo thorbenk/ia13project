@@ -215,13 +215,23 @@ class Processing:
         tenPerc = int(np.round(len(self.channelGenerators)*0.10))
         for cg in self.channelGenerators:
 
-
             # we need to distinguish here between intrinsic and external channel
             # generators
             if(isinstance(cg, ChannelGenerators.IntrinsicChannelGenerator)):
                 curChannel = cg.channels(image)
+
+                # normalize channels
+                minimum = np.min(curChannel)
+                
+                if minimum < 0:
+                   curChannel += abs(minimum)
+                else:
+                   curChannel -= minimum
+                   
+                curChannel = curChannel / np.max(curChannel)
+
                 channels.append(curChannel)
-            
+                
             else:
                 # this is an external channel generator
                 # first check if given channels match the shape of given
@@ -396,6 +406,7 @@ if __name__ == "__main__":
 
     # Adds some channel generators
     proc.addChannelGenerator(ChannelGenerators.TestChannelGenerator())
+    
     #for scale in [1.0, 5.0, 10.0]:
     #    proc.addChannelGenerator(ChannelGenerators.LaplaceChannelGenerator(scale))
     #    proc.addChannelGenerator(ChannelGenerators.GaussianGradientMagnitudeChannelGenerator(scale))

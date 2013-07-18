@@ -48,7 +48,11 @@ def computeSuperpixelFeatures(blockName, slicing):
     #proc.addScaler(Features.GaussianScaler(2.0))
 
     proc.addChannelFeature(Features.MeanChannelValueFeature())
-
+    proc.addChannelFeature(Features.MedianChannelValueFeature())
+    proc.addChannelFeature(Features.StdDeviationChannelValueFeature())
+    proc.addChannelFeature(Features.VarianceChannelValueFeature())
+    # histogram
+    proc.addChannelFeature(Features.HistogramChannelValueFeature(10))
 
     # Adds some channel generators
     for scale in [1.0, 5.0]:
