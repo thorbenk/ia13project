@@ -20,6 +20,9 @@ class ChannelFeature:
 
     def name(self):
         return self.__class__.__name__
+        
+    def displayName(self):
+        raise NotImplementedError()
 
     def numFeatures(self):
         """
@@ -37,47 +40,59 @@ class ChannelFeature:
         raise NotImplementedError()
 
 
-class MeanChannelValueFeature(ChannelFeature):
+class MeanChannelFeature(ChannelFeature):
     """
     Computes for each channel the mean value over all voxels    
     """
+    def displayName(self):
+        return "Mean"
+        
     def features(self, voxels):
         return np.mean(voxels, axis=0)
 
-    def numFeatures(self, channels):
+    def numFeatures(self):
         return 1
 
 
-class MedianChannelValueFeature(ChannelFeature):
+class MedianChannelFeature(ChannelFeature):
     """
     Computes for each channel the mean value over all voxels    
     """
+    def displayName(self):
+        return "Median"
+    
     def features(self, voxels):
         return np.median(voxels, axis=0)
 
-    def numFeatures(self, channels):
+    def numFeatures(self):
         return 1
 
 
-class StdDeviationChannelValueFeature(ChannelFeature):
+class StdDeviationChannelFeature(ChannelFeature):
     """
     Computes for each channel the mean value over all voxels    
     """
+    def displayName(self):
+        return "Standard Deviation"
+        
     def features(self, voxels):
         return np.std(voxels, axis=0)
 
-    def numFeatures(self, channels):
+    def numFeatures(self):
         return 1
         
 
-class VarianceChannelValueFeature(ChannelFeature):
+class VarianceChannelFeature(ChannelFeature):
     """
     Computes for each channel the mean value over all voxels    
     """
+    def displayName(self):
+        return "Variance"
+        
     def features(self, voxels):
         return np.var(voxels, axis=0)
 
-    def numFeatures(self, channels):
+    def numFeatures(self):
         return 1
 
 
@@ -91,6 +106,9 @@ class ChannelHistogramFeature(ChannelFeature):
         self.binEdges = np.arange(0, 1.0, 1.0/bins)
         self.binEdges = np.append(self.binEdges, [1.0])
 
+    def displayName(self):
+        return "Histogram (" + str(self.bins) + " bins)"
+        
     def numFeatures(self):
         return  self.bins
 
@@ -104,8 +122,8 @@ class ChannelHistogramFeature(ChannelFeature):
 
         features = np.zeros((nfeatures,))
 
-        for i in range(nvoxels):
-            features[i*nbins:(i+1)*nbins] = (1.0/nvoxels)*np.histogram(voxels[i], bins=self.binEdges)[0]
+        for i in range(nchannels):
+            features[i*nbins:(i+1)*nbins] = (1.0/nvoxels)*np.histogram(voxels[:,i], bins=self.binEdges)[0]
 
         
         return features        
@@ -114,19 +132,44 @@ class ChannelHistogramFeature(ChannelFeature):
 # test the features
 if __name__ == "__main__":
 
-    #Test data (n, c), 2 voxels and 3 channels per voxel
-    test = np.array([[0.1, 0.2, 0.9], [0.1, 0.2, 0.9]])
+    #Test data (n, c), supervoxel with 2 voxels and 3 channels per voxel
+    #test = np.array([[0.1, 0.2, 0.9], [0.1, 0.2, 0.8]])
+    test = np.arange(0.0, 0.9, 0.05).reshape((6,3))
+    test[2,2] = 1.0
+    print test
     
-    mean = MeanChannelValueFeature()
+    mean = MeanChannelFeature()
     meanTest = mean.features(test)
+    print "mean:"
+    print meanTest
     assert(meanTest.shape[0] == 3)
+    
+    median = MedianChannelFeature()
+    medianTest = mean.features(test)
+    print "median:"
+    print medianTest
+    assert(medianTest.shape[0] == 3)
+    
+    std = StdDeviationChannelFeature()
+    stdTest = std.features(test)
+    print "std deviation:"
+    print stdTest
+    assert(stdTest.shape[0] == 3)
+    
+    var = VarianceChannelFeature()
+    varTest = var.features(test)
+    print "var:"
+    print varTest
+    assert(varTest.shape[0] == 3)
 
 
     #Test ChannelHistogramFeature
-    hist = ChannelHistogramFeature(20)
+    hist = ChannelHistogramFeature(10)
     histTest = hist.features(test)
-    print histTest
-    assert(histTest.shape[0] == 20*3)
+    assert(histTest.shape[0] == 10*3)
+    print "histogram:"
+    for i in range(0,histTest.shape[0], 10):
+        print histTest[i:i+10] 
     
 
 

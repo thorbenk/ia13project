@@ -11,6 +11,11 @@ class IntrinsicChannelGenerator:
     Intrinsic Channel Generators create channel information from the given  3D raw
     data.
     """
+    def name(self):
+        """ 
+        returns the name of the channel to use i plots etc
+        """
+        raise NotImplementedError() 
 
     def numChannels(self):
         """
@@ -99,7 +104,11 @@ class TestChannelGenerator(IntrinsicChannelGenerator):
 
     def __init__(self, numChannels = 3):
         self.numChans = numChannels
-
+        self.scale = 1.0
+        
+    def name(self):
+        return "Test Channel" 
+        
     """
     Test Channel Generator
     Note: only for testing purpose.
@@ -107,31 +116,32 @@ class TestChannelGenerator(IntrinsicChannelGenerator):
     """
     def channels(self, image):
         array = np.zeros(image.shape+(self.numChans,))
-        
         for i in range(0, self.numChans):
             array[:,:,:,i] = (i+1)*image
-
         return array
 
     def numChannels(self):
         return self.numChans
         
 
+class SmoothImageChannelGenerator(IntrinsicChannelGenerator):
+    """
+    Computes the smoothed 3D-Image.
+    """
 
-################################################################################
-# TODO: Gradient Amplitudes, Eigenvalues of Hessian of Gaussian, ...?
-# I think we want to use vigra filters for this.
-# 
-# However, we should consider possible speedups. So, when implementing your
-# classes, it takes an scale-attribute. Please make sure, that is has a default
-# value. 
-# 
-# If the default value is used, then the filter-kernel size of the particular
-# filter should be minimal, so for 3d-input image it should be 3x3x3 for a
-# laplacian filter.
-# Then we can use scalers later on to speed things up, as we don't have to
-# compute the convolution over a wide window.
+    def __init__(self, scale = 1.0):
+        self.scale = scale
+        
+    def name(self):
+        return "Smoothed Image" 
 
+    def channels(self, image):
+        smooth = gaussianSmoothing(image,self.scale)
+        return np.reshape(smooth, image.shape+(1,))
+        
+    def numChannels(self):
+        return 1
+        
 
 class LaplaceChannelGenerator(IntrinsicChannelGenerator):
     """
@@ -140,33 +150,34 @@ class LaplaceChannelGenerator(IntrinsicChannelGenerator):
     gaussian-window width sigma at the constructor.
     """
 
-    def __init__(self, scale = 1.0, step = 1.0):
+    def __init__(self, scale = 1.0):
         self.scale = scale
-        self.step = step
-
+        
+    def name(self):
+        return "Laplacian" 
+        
     def channels(self, image):
-        laplace = laplacianOfGaussian(image,self.scale,None,0.0,self.step)
+        laplace = laplacianOfGaussian(image,self.scale)
         return np.reshape(laplace, image.shape+(1,))
 
     def numChannels(self):
         return 1
-
+        
 
 class GaussianGradientMagnitudeChannelGenerator(IntrinsicChannelGenerator):
 
     """
-    Computes Gaussian gradient magnitudes for a volume 'image'
+    Computes Gaussian gradient magnitudes for a given 3D-Image.
     """
 
-    def __init__(self, scale = 1.0, step = 1.0):
+    def __init__(self, scale = 1.0):
         self.scale = scale
-        self.step = step
-
+        
+    def name(self):
+        return "Gaussian Gradient Magnitude" 
+        
     def channels(self, image):
-        magnitudes = gaussianGradientMagnitude(image, self.scale,
-                                               True,None,0.0,
-                                               self.step)
-
+        magnitudes = gaussianGradientMagnitude(image, self.scale)
         return magnitudes.reshape(image.shape+(1,))
 
     def numChannels(self):
@@ -175,17 +186,17 @@ class GaussianGradientMagnitudeChannelGenerator(IntrinsicChannelGenerator):
 
 class EVofGaussianHessianChannelGenerator(IntrinsicChannelGenerator):
     """
-    Computes Eigen values of the Hessian of Gaussian matrix for a volume 'image'
+    Computes Eigen values of the Hessian of Gaussian matrix for a given 3D-Image.
     """
 
-    def __init__(self, scale = 1.0, step = 1.0):
+    def __init__(self, scale = 1.0):
         self.scale = scale
-        self.step = step
+   
+    def name(self):
+        return "Eigen Values of the Hessian of Gaussian" 
     
     def channels(self, image):
-        hessianEVs = hessianOfGaussianEigenvalues(image, self.scale, 
-                                                  None, 0.0,
-                                                  self.step)
+        hessianEVs = hessianOfGaussianEigenvalues(image, self.scale)
         return hessianEVs
 
     def numChannels(self):
@@ -194,19 +205,17 @@ class EVofGaussianHessianChannelGenerator(IntrinsicChannelGenerator):
 
 class EVofStructureTensorChannelGenerator(IntrinsicChannelGenerator):
     """
-    Computes Eigen values of the structure tensor for a volume 'image'
+    Computes Eigen values of the structure tensor for a given 3D-Image.
     """
 
-    def __init__(self, innerScale = 1.0, outerScale = 1.0, step=1.0):
-        self.innerScale = innerScale
-        self.outerScale = outerScale
-        self.step = step
-
+    def __init__(self, scale = 1.0):
+        self.scale = scale
+        
+    def name(self):
+        return "Eigen Values of the Structure Tensor" 
+   
     def channels(self, image):
-        structureEVs = structureTensorEigenvalues(image, 
-                                                  self.innerScale, self.outerScale,
-                                                  None, 0.0,
-                                                  self.step) 
+        structureEVs = structureTensorEigenvalues(image, self.scale, self.scale) 
         return structureEVs
 
     def numChannels(self):
@@ -219,14 +228,10 @@ if __name__ == "__main__":
     #Test data (n, n, n), random sampled data
     n = 20
     scale = 1.0 # n=5 -> sc<1.1;  n=20 -> sc<6.1  ??? (kernel longer than line) 
-    sigma = 1.0
-    stepsize = 2.0
     test = np.float32(np.random.random((n,n,n)))
     
     print "Test data", test.shape, type(test), type(test[0,0,0])
-    print "Sigma for Gaussian:", sigma
-    print "Scale for Laplace:", scale
-    print "Step to adjacent pixels:", stepsize
+    print "Scale: ", scale
     #One might also wants to add meaningful test data to test the gradient etc...
     
     testGenerator = TestChannelGenerator(4)
@@ -235,23 +240,27 @@ if __name__ == "__main__":
     assert( testGenerator.numChannels() == 4)
     assert( testChannels.shape == (test.shape + (testGenerator.numChannels(),) ))
     
-    laplace = LaplaceChannelGenerator(scale, step=stepsize)
+    smooth = SmoothImageChannelGenerator(scale)
+    smoothChannels = smooth.channels(test)
+    assert( smooth.numChannels() == 1)
+    assert( smoothChannels.shape == (test.shape + (smooth.numChannels(),) ))
+    
+    laplace = LaplaceChannelGenerator(scale)
     laplaceChannels = laplace.channels(test)
     assert( laplace.numChannels() == 1)
     assert( laplaceChannels.shape == (test.shape + (laplace.numChannels(),) ))
     
-    gauss = GaussianGradientMagnitudeChannelGenerator(sigma, stepsize)
+    gauss = GaussianGradientMagnitudeChannelGenerator(scale)
     gaussChannels = gauss.channels(test)
     assert( gauss.numChannels() == 1)
     assert( gaussChannels.shape == (test.shape + (gauss.numChannels(),) ))
     
-    hessian = EVofGaussianHessianChannelGenerator(step=stepsize)
+    hessian = EVofGaussianHessianChannelGenerator(scale)
     hessianChannels = hessian.channels(test)
-    print hessian.numChannels()
     assert( hessian.numChannels() == 3)
     assert( hessianChannels.shape == (test.shape + (hessian.numChannels(),) ))
     
-    struct = EVofStructureTensorChannelGenerator(step=stepsize)
+    struct = EVofStructureTensorChannelGenerator(scale)
     structChannels = struct.channels(test)
     assert( struct.numChannels() == 3)
     assert( structChannels.shape == (test.shape + (struct.numChannels(),) ))

@@ -19,6 +19,9 @@ class SupervoxelFeature:
         """
         return self.__class__.__name__
 
+    def displayName(self):
+        raise NotImplementedError()
+        
     def numFeatures(self):
         """
         this function should return the number of features, that are calculated
@@ -45,7 +48,9 @@ class SizeFeature(SupervoxelFeature):
     Number of Voxel per Supervoxel.
     Note that this is equivalent to the discrete volume
     """
-    
+    def displayName(self):
+        return "Size"
+        
     def numFeatures(self):
         return 1
 
@@ -67,7 +72,9 @@ class PCA(SupervoxelFeature):
         """
 
         self.calcEigVectors = PC
-
+        
+    def displayName(self):
+        return "PCA"
     
     def numFeatures(self):
         if self.calcEigVectors:

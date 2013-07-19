@@ -32,7 +32,7 @@ def computeSuperpixelFeatures(blockName, slicing):
     f.close()
 
     f = h5py.File("data/%s.h5" % blockName)
-    d = f[d_h5_path][slicing]
+    d = f[d_h5_path] #[slicing]
     f.close()
 
     #####################################################
@@ -47,26 +47,32 @@ def computeSuperpixelFeatures(blockName, slicing):
     # currently we don't need scalers.
     #proc.addScaler(Features.GaussianScaler(2.0))
 
-    proc.addChannelFeature(Features.MeanChannelValueFeature())
-    proc.addChannelFeature(Features.MedianChannelValueFeature())
-    proc.addChannelFeature(Features.StdDeviationChannelValueFeature())
-    proc.addChannelFeature(Features.VarianceChannelValueFeature())
+    proc.addChannelFeature(Features.MeanChannelFeature())
+    proc.addChannelFeature(Features.MedianChannelFeature())
+    proc.addChannelFeature(Features.StdDeviationChannelFeature())
+    proc.addChannelFeature(Features.VarianceChannelFeature())
     # histogram
-    proc.addChannelFeature(Features.HistogramChannelValueFeature(10))
+    proc.addChannelFeature(Features.ChannelHistogramFeature(5))
+    proc.addChannelFeature(Features.ChannelHistogramFeature(10))
+    proc.addChannelFeature(Features.ChannelHistogramFeature(20))
 
     # Adds some channel generators
     for scale in [1.0, 5.0]:
+        proc.addChannelGenerator(Features.SmoothImageChannelGenerator(scale))
         proc.addChannelGenerator(Features.LaplaceChannelGenerator(scale))
         proc.addChannelGenerator(Features.GaussianGradientMagnitudeChannelGenerator(scale))
         proc.addChannelGenerator(Features.EVofGaussianHessianChannelGenerator(scale))
+        proc.addChannelGenerator(Features.EVofStructureTensorChannelGenerator(scale))
 
     proc.addSupervoxelFeature(Features.SizeFeature())
     proc.addSupervoxelFeature(Features.PCA())
 
-    features = proc.process(d, ws)
+    features, featureInfo, channelInfo = proc.process(d, ws)
 
     g = h5py.File(f_path, 'w')
     g.create_dataset("features", data=features)
+    g.create_dataset("channelInfo", data=channelInfo)
+    g.create_dataset("featureInfo", data=featureInfo)
     g.close()
 
     print "Feature Array Shape: ", features.shape

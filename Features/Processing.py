@@ -197,8 +197,9 @@ class Processing:
         ##  Scale Image according to scalers
         ##  and calculate the channels
 
-        # generate channels
+        # generate channels and save their names
         channels = []
+        channelInfo = [] 
 
         # NOTE: if we want to allow scaled images in terms of changed
         # dimensions, then you have to redefine your Scalers in order to also
@@ -207,7 +208,7 @@ class Processing:
         # for now we only allow scalers that don't change dimension.
         
         if self.channelGenerators:
-            print "[FEATURES] Generating ", len(self.channelGenerators), " Channels"
+            print "[FEATURES] Generating Channels with ", len(self.channelGenerators), " Generators"
         
         startT = time.clock()
 
@@ -222,15 +223,16 @@ class Processing:
 
                 # normalize channels
                 minimum = np.min(curChannel)
-                
                 if minimum < 0:
                    curChannel += abs(minimum)
                 else:
                    curChannel -= minimum
-                   
                 curChannel = curChannel / np.max(curChannel)
-
+                
+                # append channel and corresponding info to lists
                 channels.append(curChannel)
+                for channelnumber in range(cg.numChannels()):
+                   channelInfo.append( (cg.name(), cg.scale, channelnumber) )
                 
             else:
                 # this is an external channel generator
@@ -263,6 +265,7 @@ class Processing:
             scaledImage = scaler.scaled(image)
             for cg in self.scalingChannelGenerators:
                 channels.append(cg.channels(image))
+                channelInfo.append( (cg.name(), cg.scale, None) )
 
         gc.collect()
 
@@ -274,6 +277,7 @@ class Processing:
 
         channels = np.concatenate(channels, axis=3)
         nChannels = channels.shape[3]
+        print "           Generated ", nChannels, " channels"
         
 
 
@@ -285,7 +289,7 @@ class Processing:
         #labelIndices = self._getSupervoxels(labels)
         supervoxels = self._getSupervoxels(labels)
         print "           Done. It took ", time.clock()-startT
-
+        
         
         # check that labels are dense
         #assert(len(labelIndices.keys()) == nLabels)
@@ -297,8 +301,8 @@ class Processing:
         #  things heavily as we don't need to jump around in memory all the
         #  time.
         #
-          
-        
+                
+                
         cfeatures = []
         sfeatures = []
 
@@ -319,7 +323,6 @@ class Processing:
         tenPerc = int(np.round(nLabels*0.10))
 
         for supervoxel in supervoxels:
-
            
             # convert array of coordinates into advanced slicing notation
             supervoxel = (supervoxel[0], supervoxel[1], supervoxel[2])
@@ -355,6 +358,17 @@ class Processing:
 
         # print out computation time
         print "           Done. It took ", time.clock()-startT
+        
+        # compute information about features
+        featureInfo = []
+        for cfeature in self.channelFeatures:
+            for featIDX in range(cfeature.numFeatures()):
+                for chanIDX in range(nChannels):
+                    featureInfo.append(( featIDX, cfeature.displayName(), chanIDX))
+        for sfeature in self.supervoxelFeatures:
+            for featIDX in range(sfeature.numFeatures()):
+                featureInfo.append(( featIDX, sfeature.displayName(), len(channelInfo) ))
+
 
         # make the list to be numpy arrays
         cfeatures = np.array(cfeatures)
@@ -371,8 +385,7 @@ class Processing:
             concats.append(sfeatures)
         
         allFeatures = np.concatenate(concats, axis=1)
-        return allFeatures
-
+        return allFeatures, featureInfo, channelInfo
 
         
 
@@ -402,21 +415,36 @@ if __name__ == "__main__":
     # currently we don't need scalers.
     #proc.addScaler(Scalers.DummyScaler())
 
-    proc.addChannelFeature(ChannelFeatures.MeanChannelValueFeature())
-
+    proc.addChannelFeature(ChannelFeatures.MeanChannelFeature())
+    proc.addChannelFeature(ChannelFeatures.MedianChannelFeature())
+    proc.addChannelFeature(ChannelFeatures.StdDeviationChannelFeature())
+    proc.addChannelFeature(ChannelFeatures.VarianceChannelFeature())
+    # histogram
+    proc.addChannelFeature(ChannelFeatures.ChannelHistogramFeature(5))
+    proc.addChannelFeature(ChannelFeatures.ChannelHistogramFeature(10))
+    
     # Adds some channel generators
     proc.addChannelGenerator(ChannelGenerators.TestChannelGenerator())
     
-    #for scale in [1.0, 5.0, 10.0]:
-    #    proc.addChannelGenerator(ChannelGenerators.LaplaceChannelGenerator(scale))
-    #    proc.addChannelGenerator(ChannelGenerators.GaussianGradientMagnitudeChannelGenerator(scale))
-    #    proc.addChannelGenerator(ChannelGenerators.EVofGaussianHessianChannelGenerator(scale))
+    for scale in [1.0, 5.0]:
+        proc.addChannelGenerator(ChannelGenerators.SmoothImageChannelGenerator(scale))
+        proc.addChannelGenerator(ChannelGenerators.LaplaceChannelGenerator(scale))
+        proc.addChannelGenerator(ChannelGenerators.GaussianGradientMagnitudeChannelGenerator(scale))
+        proc.addChannelGenerator(ChannelGenerators.EVofGaussianHessianChannelGenerator(scale))
+        proc.addChannelGenerator(ChannelGenerators.EVofStructureTensorChannelGenerator(scale))
 
     proc.addSupervoxelFeature(SupervoxelFeatures.SizeFeature())
     proc.addSupervoxelFeature(SupervoxelFeatures.PCA())
-    ret = proc.process(image, labels)
+    ret, featInf, chInf = proc.process(image, labels)
 
     print "###################"
     print ret
+    print ret.shape
+    print featInf
+    print type(featInf)
+    print type(featInf)
+    print chInf
+    print len(featInf)
+    print len(chInf)
 
 

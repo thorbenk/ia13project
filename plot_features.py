@@ -28,13 +28,13 @@ features = [0, 1, 2, 3]
 
 f_file = h5py.File(features_path)
 f = f_file["features"].value
+c = f_file["channelInfo"].value
+inf = f_file["featureInfo"].value
 f_file.close()
 
 l_file = h5py.File(labels_path)
 l = l_file["ws"].value
 l_file.close()
-
-
 
 lslice = l[:,:,z_slide]
 
@@ -46,8 +46,6 @@ print f.shape
 # number of supervoxels
 nsv = f.shape[0]
 nf = f.shape[1]
-
-
 
 
 assert(len(l.shape) == 3)
@@ -67,13 +65,24 @@ supervoxels = colortable[lslice]
 # print the boundaries of the supervoxels
 figure()
 imshow(supervoxels)
+colorbar()
+title('Supervoxels')
+savefig('./Features/plots/supervoxels.png', bbox_inches=0)
 
-for feat in features:
-    figure("feature: "+str(feat))
+for i in range(72):
+    figure("feature: "+str(i))
     feature = np.zeros((nsv+1))
-    feature[1:] = f[:, feat]
+    feature[1:] = f[:, i]
     output = feature[lslice]
     gray()
     imshow(output)
     colorbar()
-show()
+    plotTitle = inf[i,1]
+    picTitle = inf[i,1] + "_" + inf[i,0]
+    channelNumber = inf[i,2]
+    if channelNumber != str(len(c)):
+       plotTitle += " of " + c[channelNumber, 0] + " of Scale " + c[channelNumber, 1]
+       picTitle += "_" + c[channelNumber, 0] + "(" + c[channelNumber, 2] + ")_" + c[channelNumber, 1]
+    title(plotTitle)
+    savefig('./Features/plots/' + picTitle + '.png', bbox_inches=0)
+
