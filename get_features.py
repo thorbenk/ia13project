@@ -32,7 +32,7 @@ def computeSuperpixelFeatures(blockName, slicing):
     f.close()
 
     f = h5py.File("data/%s.h5" % blockName)
-    d = f[d_h5_path] #[slicing]
+    d = f[d_h5_path][slicing]
     f.close()
 
     #####################################################
